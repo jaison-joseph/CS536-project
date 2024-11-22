@@ -1,0 +1,20 @@
+#!/bin/bash
+
+docker build -t mn-stratum-iperf3 .
+
+MN_STRATUM_DOCKER_NAME=${MN_STRATUM_DOCKER_NAME:-mn-stratum}
+# MN_STRATUM_IMG=${MN_STRATUM_IMG:-opennetworking/mn-stratum:20.12}
+MN_STRATUM_IMG=mn-stratum-iperf3  # Instead of opennetworking/mn-stratum:20.12
+MN_STRATUM_MOUNT_DIR=${MN_STRATUM_MOUNT_DIR:-$PWD}
+
+# Run the container 
+docker run --privileged --rm -it \
+    --name $MN_STRATUM_DOCKER_NAME \
+    --network host \
+    --cpus=1.5 \
+    --memory=5g \
+    --memory-swap=6g \
+    --shm-size=1g \
+    -v /tmp/mn-stratum:/tmp \
+    -v "$MN_STRATUM_MOUNT_DIR":/workdir -w /workdir \
+    $MN_STRATUM_IMG --custom custom-topo-with-tests.py --topo customtopo --link tc

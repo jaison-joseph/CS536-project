@@ -1,0 +1,24 @@
+Connecting to host 10.0.0.4, port 5102
+[  4] local 10.0.0.3 port 36684 connected to 10.0.0.4 port 5102
+[ ID] Interval           Transfer     Bandwidth       Total Datagrams
+[  4]   0.00-1.00   sec   560 KBytes  4.58 Mbits/sec  70  
+[  4]   1.00-2.00   sec   616 KBytes  5.05 Mbits/sec  77  
+[  4]   2.00-3.00   sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]   3.00-4.00   sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]   4.00-5.00   sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]   5.00-6.00   sec   616 KBytes  5.05 Mbits/sec  77  
+[  4]   6.00-7.00   sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]   7.00-8.00   sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]   8.00-9.00   sec   616 KBytes  5.04 Mbits/sec  77  
+[  4]   9.00-10.00  sec   608 KBytes  4.99 Mbits/sec  76  
+[  4]  10.00-11.00  sec   608 KBytes  4.97 Mbits/sec  76  
+[  4]  11.00-12.00  sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]  12.00-13.00  sec   616 KBytes  5.05 Mbits/sec  77  
+[  4]  13.00-14.00  sec   608 KBytes  4.98 Mbits/sec  76  
+[  4]  14.00-15.00  sec   608 KBytes  4.98 Mbits/sec  76  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Jitter    Lost/Total Datagrams
+[  4]   0.00-15.00  sec  8.89 MBytes  4.97 Mbits/sec  8.811 ms  971/1138 (85%)  
+[  4] Sent 1138 datagrams
+
+iperf Done.
