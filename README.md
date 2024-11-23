@@ -14,9 +14,6 @@ In another terminal window, navigate into the downloaded folder. Then, run:
 	to see the list of hosts. You should see all of them. 
 
 In another terminal window, navigate into the downloaded folder. Then, run:
-`make mininet-install-iperf3`
-
-In another terminal window, navigate into the downloaded folder. Then, run:
 `make cli`
 	Once the above has run, you should see the ONOS CLI. From the ONOS CLI, run the below command:
 	`app activate fwd`

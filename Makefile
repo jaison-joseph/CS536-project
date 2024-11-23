@@ -24,8 +24,8 @@ help:
 # mininet:
 # 	$(SCRIPTS)/mn-stratum --topo linear,2
 
-mininet:
-	$(SCRIPTS)/mn-stratum --custom custom-topo.py --topo customtopo --link tc
+# mininet:
+# 	$(SCRIPTS)/mn-stratum --custom custom-topo.py --topo customtopo --link tc
 
 mininet-install-iperf3:
 	docker exec -it mn-stratum bash -c \
@@ -35,8 +35,8 @@ mininet-install-iperf3:
 		apt-get --allow-insecure-repositories --allow-unauthenticated update ; \
 		apt-get -y --allow-unauthenticated install iperf3"
 
-mininet-with-tests:
-	$(SCRIPTS)run-tests
+mininet:
+	$(SCRIPTS)/mn-custom
 
 controller:
 	ONOS_APPS=gui,proxyarp,drivers.bmv2,lldpprovider,hostprovider,fwd \

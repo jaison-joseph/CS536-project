@@ -1,3 +1,5 @@
+# look at the comments above the "if __name__ == '__main__':" line
+
 import datetime
 from collections import defaultdict
 
@@ -19,14 +21,21 @@ links = set()
 # testing file bookkeeping
 lk = defaultdict(int)
 
-# will output code to test connection between hosts h{x+1} and host h{y+1}
-# will setup an iperf3 server at host h{y+1}
-def addPairToTest(clientHostNum: int, serverHostNum: int):
+testDuration = 15
+defaultTestBandwidth = 1
+
+# will output code to test connection between hosts clientHostNum and host serverHostNum
+# will setup an iperf3 server at host serverHostNum
+def addPairToTest(clientHostNum: int, serverHostNum: int, bw = -1):
 	assert 1 <= clientHostNum <= numHosts + 1
 	assert 1 <= serverHostNum <= numHosts + 1
+	if bw == -1:
+		bw = defaultTestBandwidth
+	assert bw > 0
 	assert clientHostNum != serverHostNum
-	pair = (clientHostNum, serverHostNum)
-	assert pair not in pairs, "duplicate pair"
+	pair = (clientHostNum, serverHostNum, bw)
+	for p in pairs:
+		assert not(p[0] == clientHostNum and p[1] == serverHostNum), "duplicate test pair"
 	targets.add(serverHostNum)
 	pairs.add(pair)
 
@@ -52,11 +61,11 @@ def getCommands():
 
 	res.append("# run iperf clients")
 	res.append("print('run iperf clients')")
-	for c, s in pairs:
+	for c, s, bw in pairs:
 		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
 		res.append(f"print('launching {c} -> {s} iperf')")
 		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
-		res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -b 1M -t 15 -p {5100 + lk[s]} -i 1 > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -b {bw}M -t {testDuration} -p {5100 + lk[s]} -i 1 > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
 		# cmd = f"h{c}.cmd('nohup ( (date > {outputFilePrefix}_{c}_{s}.txt) " + \
 		# "&& " + \
 		# f"(iperf3 -c 10.0.0.{s} -u -b 20M -t 15 -p {5100 + lk[s]} -i 1 >> {outputFilePrefix}_{c}_{s}.txt) " + \
@@ -70,7 +79,7 @@ def getCommands():
 	
 	res.append("# wait for iperf clients to finish")
 	res.append("print('wait for iperf clients to finish')")
-	res.append("time.sleep(30)")
+	res.append(f"time.sleep({testDuration * 2})")
 	res.append("")
 
 	res.append("# Kill iperf servers")
@@ -82,8 +91,8 @@ def getCommands():
 	return res
 
 def getTestFile():
-	assert numHosts > 0
-	assert numSwitches > 0
+	assert numHosts > 0, "please make a call to setNumberOfHosts first"
+	assert numSwitches > 0, "please make a call to setNumberOfSwitches first"
 	hostLineLhs = ", ".join(["h"+str(i) for i in range(1, numHosts + 1)])
 	hostLineRhs = ", ".join(["'h"+str(i)+"'" for i in range(1, numHosts + 1)])
 
@@ -96,6 +105,7 @@ def getTestFile():
 		"",
 		"	# Get current timestamp for log files",
 		"	timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')",
+		# "	timestamp = str(datetime.now()).replace(' ', '_')",
 		"",
 		"",	
 		"	# Get host objects",
@@ -107,7 +117,11 @@ def getTestFile():
 
 	fileEnd = [
 		"	except Exception as e:",
-		"		print(e)"
+		"		print(e)",
+		"",
+		"# this file is executed from the mininet shell; this is how to use it:",
+		"# mininet> py execfile('test.py')",
+		"# mininet> py run_tests(net)"
 	]
 
 	indentLevel = 2
@@ -168,12 +182,23 @@ def setNumberOfSwitches(x: int):
 	global numSwitches
 	numSwitches = x
 
+def setTestDuration(x: int):
+	assert x > 0
+	global testDuration
+	testDuration = x
+
+def setTestBandwidth(x: int):
+	assert x > 0
+	global defaultTestBandwidth
+	defaultTestBandwidth = x
+
 # add a link between 2 network entities (hosts/switches)
 # t1: 'h' (host) or 's': switch
 # x1: a number in the range [1, number of hosts] if t1 == 'h' or [1, number of switches] if t1 == 's'
 # t2: 'h' (host) or 's': switch
 # x2: a number in the range [1, number of hosts] if t1 == 'h' or [1, number of switches] if t1 == 's'
 # bw: bandwidth of the link, in mbps (0 if you want to leave it unspecified)
+# if you have a link from host 1 to host 2 already, you can't establish another link from host 2 to host 1
 def addLink(t1: str, x1: int, t2: str, x2: int, bw: int = 0):
 	assert t1 in ['h', 'H', 's', 'S']
 	assert t2 in ['h', 'H', 's', 'S']
@@ -200,12 +225,12 @@ def addLink(t1: str, x1: int, t2: str, x2: int, bw: int = 0):
 		if p[0] == p2 and p[1] == p1:
 			raise AssertionError
 	
-	pair = (p1, p2) if bw == 0 else (p1, p2, f"bw={bw}")
+	pair = (p1, p2) if bw == 0 else (p1, p2, bw)
 	links.add(pair)
 
 def generateTopologyFile():
-	assert numHosts > 0
-	assert numSwitches > 0
+	assert numHosts > 0, "please make a call to setNumberOfHosts first"
+	assert numSwitches > 0, "please make a call to setNumberOfSwitches first"
 	lines = open('custom-topo.py', 'r').readlines()
 
 	new_content = [
@@ -217,7 +242,10 @@ def generateTopologyFile():
 	] + \
 	[''] + \
 	[
-		f"self.addLink{p}" for p in links
+		f"self.addLink({p[0]}, {p[1]}, bw={p[2]})" \
+		if len(p) == 3 else \
+		f"self.addLink({p[0]}, {p[1]})" \
+		for p in links
 	]
 
 	indentLevel = 2
@@ -235,6 +263,45 @@ def generateTopologyFile():
 		output_file
 	)	
 
+'''
+
+this file modifies custom-topo.py and test.py
+to use this file, you need to make the following function calls (ideally in this order):
+
+- setNumberOfHosts(x: int) # number of hosts in the topology
+	if you set setNumberOfHosts to 5, then you reference them by a number in the range [1, 6]
+
+- setNumberOfSwitches(x: int) # number of switches in the topology
+	- # you want to call these 2 functions first, before the other functions
+
+- addLink(t1, x, t2, y, bandwith)
+	- t1 & t2: set it to 's' for switch or 'h' for host
+	- x & y: int for the host/switch number
+	- (optional) bandwidth: link speed limit in mbps
+	- if you have a link from host 1 to host 2 already, you can't establish another link from host 2 to host 1
+
+- generateTopologyFile()
+	- you can make this call after all your calls to addLink()
+	- this function modifies the custom-topo.py, used by mininet
+
+- setTestDuration(x)
+	- the duration the tests should run for, in seconds
+	- default value is 15 seconds, if this function is not called
+
+- setTestBandwidth(x)
+	- the link speed each test pair of hosts should attempt to reach in mbps
+	- default value is 1 mbps, if this function is not called
+
+- addPairToTest(x, y, bw)
+	- add a pair of hosts to test the bandwidth of
+	- x & y: int: value in [1, number-of-hosts + 1]
+	- (optional) bw: the throughput this connection should attempt to reach in mbps
+		- if not specified, it will default to the value of defaultTestBandwidth 
+
+- generateTestFile()
+	- generate the test.py file
+
+'''
 if __name__ == '__main__':
 	# replace_test_section(
 	# 	open('custom-topo-with-tests.py').readlines(),
@@ -244,6 +311,7 @@ if __name__ == '__main__':
 	setNumberOfHosts(4)
 	setNumberOfSwitches(4)
 
+	# for the topology file
 	addLink('s', 1, 's', 2, 5)
 	addLink('s', 1, 's', 3, 5)
 	addLink('s', 2, 's', 4, 5)
@@ -255,6 +323,10 @@ if __name__ == '__main__':
 	addLink('h', 4, 's', 4)
 
 	generateTopologyFile()
+
+	# for the test file
+	setTestDuration(15)
+	setTestBandwidth(1)
 
 	addPairToTest(1, 2)
 	addPairToTest(3, 2)
@@ -270,6 +342,7 @@ if __name__ == '__main__':
 
 	addPairToTest(1, 3)
 	addPairToTest(2, 3)
+	# addPairToTest(4, 3, 2)
 	addPairToTest(4, 3)
 
 	generateTestFile()
