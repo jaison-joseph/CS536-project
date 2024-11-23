@@ -7,6 +7,7 @@ import os
 
 class customtopo(Topo):
     def build(self):
+        # START build
         # Your existing topology code here
         s1 = self.addSwitch('s1')
         s2 = self.addSwitch('s2')
@@ -32,9 +33,7 @@ class customtopo(Topo):
         self.addLink(h3, s3)
         self.addLink(h4, s4)
 
-# START run_tests
-
-# END run_tests
+        # END build
 
 # Keep this for compatibility with --custom flag
 topos = { 'customtopo': ( lambda: customtopo() ) }

@@ -2,53 +2,33 @@ import datetime
 from collections import defaultdict
 
 # we use numbers in [1, numHosts + 1] to identify each host in the code
-numHosts = 4
-numSwitches = 4
-indentLevel = 2
-
-hostLineLhs = ", ".join(["h"+str(i) for i in range(1, numHosts + 1)])
-hostLineRhs = ", ".join(["'h"+str(i)+"'" for i in range(1, numHosts + 1)])
-
-fileStart = [
-	"def run_tests(net):",
-	"	from datetime import datetime",
-	"	# Create logs directory if it doesn't exist",
-	"	if not os.path.exists('logs'):",
-	"		os.makedirs('logs')",
-	"",
-	"	# Get current timestamp for log files",
-	"	timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')",
-	"",
-	"",	
-	"	# Get host objects",
-	f"	{hostLineLhs} = net.get({hostLineRhs})",
-	"",
-	"	try:"
-]
-
-
-fileEnd = [
-	"	except Exception as e:",
-	"		print(e)"
-]
+numHosts = 0
+numSwitches = 0
 
 # timestamp_number-of-hosts_number-of-switches
 outputFilePrefix = f"logs/{str(datetime.datetime.now()).replace(' ', '-')}" + \
 					f"_{str(numHosts)}_{str(numSwitches)}"
 
+# targets and pairs are for the testing file bookkeeping
 targets = set()
 pairs = set()
 
+# topology file bookkeeping
+links = set()
+
+# testing file bookkeeping
 lk = defaultdict(int)
 
 # will output code to test connection between hosts h{x+1} and host h{y+1}
 # will setup an iperf3 server at host h{y+1}
-def testPair(clientHostNum: int, serverHostNum: int):
+def addPairToTest(clientHostNum: int, serverHostNum: int):
 	assert 1 <= clientHostNum <= numHosts + 1
 	assert 1 <= serverHostNum <= numHosts + 1
 	assert clientHostNum != serverHostNum
+	pair = (clientHostNum, serverHostNum)
+	assert pair not in pairs, "duplicate pair"
 	targets.add(serverHostNum)
-	pairs.add((clientHostNum, serverHostNum))
+	pairs.add(pair)
 
 	lk[serverHostNum] += 1
 
@@ -101,22 +81,36 @@ def getCommands():
 
 	return res
 
-def getFunction():
-	testPair(1, 2)
-	testPair(3, 2)
-	testPair(4, 2)
-	
-	testPair(2, 1)
-	testPair(3, 1)
-	testPair(4, 1)
+def getTestFile():
+	assert numHosts > 0
+	assert numSwitches > 0
+	hostLineLhs = ", ".join(["h"+str(i) for i in range(1, numHosts + 1)])
+	hostLineRhs = ", ".join(["'h"+str(i)+"'" for i in range(1, numHosts + 1)])
 
-	testPair(1, 4)
-	testPair(2, 4)
-	testPair(3, 4)
+	fileStart = [
+		"def run_tests(net):",
+		"	from datetime import datetime",
+		"	# Create logs directory if it doesn't exist",
+		"	if not os.path.exists('logs'):",
+		"		os.makedirs('logs')",
+		"",
+		"	# Get current timestamp for log files",
+		"	timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')",
+		"",
+		"",	
+		"	# Get host objects",
+		f"	{hostLineLhs} = net.get({hostLineRhs})",
+		"",
+		"	try:"
+	]
 
-	testPair(1, 3)
-	testPair(2, 3)
-	testPair(4, 3)
+
+	fileEnd = [
+		"	except Exception as e:",
+		"		print(e)"
+	]
+
+	indentLevel = 2
 
 	res = []
 	commands = getCommands()
@@ -128,9 +122,13 @@ def getFunction():
 		res.append(f"{line}\n")
 	return res
 
-def replace_test_section(lines, new_content, output_file="custom-topo-with-tests.py"):
-	start_marker = "# START run_tests"
-	end_marker = "# END run_tests"
+def replace_test_section(
+	lines, new_content, 
+	start_marker, end_marker, 
+	output_file
+):
+	# start_marker = "# START build"
+	# end_marker = "# END build"
 		
 	# Find the start and end indices
 	start_idx = -1
@@ -147,22 +145,136 @@ def replace_test_section(lines, new_content, output_file="custom-topo-with-tests
 		raise ValueError("Could not find START and END markers for run_tests section")
 		
 	# Create new content list
-	new_lines = lines[:start_idx] + [start_marker + "\n\n"] + \
+	new_lines = lines[:start_idx + 1] + \
 				[new_content if not new_content.endswith('\n') else new_content] + \
-				["\n" + end_marker + "\n"] + lines[end_idx + 1:]
+				lines[end_idx:]
 		
 	# Write to output file
 	with open(output_file, 'w') as f:
 		f.writelines(new_lines)
 
+def generateTestFile():
+	with open('test.py', 'w+') as f:
+		for l in getTestFile():
+			f.write(l)
+
+def setNumberOfHosts(x: int):
+	assert x > 0
+	global numHosts
+	numHosts = x
+
+def setNumberOfSwitches(x: int):
+	assert x > 0
+	global numSwitches
+	numSwitches = x
+
+# add a link between 2 network entities (hosts/switches)
+# t1: 'h' (host) or 's': switch
+# x1: a number in the range [1, number of hosts] if t1 == 'h' or [1, number of switches] if t1 == 's'
+# t2: 'h' (host) or 's': switch
+# x2: a number in the range [1, number of hosts] if t1 == 'h' or [1, number of switches] if t1 == 's'
+# bw: bandwidth of the link, in mbps (0 if you want to leave it unspecified)
+def addLink(t1: str, x1: int, t2: str, x2: int, bw: int = 0):
+	assert t1 in ['h', 'H', 's', 'S']
+	assert t2 in ['h', 'H', 's', 'S']
+
+	t1 = t1.lower()
+	if t1 == 'h':
+		assert 1 <= x1 <= numHosts
+	else:
+		assert 1 <= x1 <= numSwitches
+
+	t2 = t2.lower()
+	if t2 == 'h':
+		assert 1 <= x2 <= numHosts
+	else:
+		assert 1 <= x2 <= numSwitches
+
+	assert bw >= 0
+
+	p1, p2 = f"{t1}{x1}", f"{t2}{x2}"
+	assert p1 != p2
+	for p in links:
+		if p[0] == p1 and p[1] == p2:
+			raise AssertionError
+		if p[0] == p2 and p[1] == p1:
+			raise AssertionError
+	
+	pair = (p1, p2) if bw == 0 else (p1, p2, f"bw={bw}")
+	links.add(pair)
+
+def generateTopologyFile():
+	assert numHosts > 0
+	assert numSwitches > 0
+	lines = open('custom-topo.py', 'r').readlines()
+
+	new_content = [
+		f"s{i} = self.addSwitch('s{i}')" for i in range(1, numHosts + 1)
+	] + \
+	[''] + \
+	[
+		f"h{i} = self.addHost('h{i}')" for i in range(1, numHosts + 1)
+	] + \
+	[''] + \
+	[
+		f"self.addLink{p}" for p in links
+	]
+
+	indentLevel = 2
+
+	indent = '\t' * indentLevel
+	new_content = ''.join(f"{indent}{line}\n" for line in new_content)
+
+	start_marker = '# START build'
+	end_marker = '# END build'
+	output_file = 'custom-topo.py'
+
+	replace_test_section(
+		lines, new_content, 
+		start_marker, end_marker, 
+		output_file
+	)	
+
 if __name__ == '__main__':
 	# replace_test_section(
 	# 	open('custom-topo-with-tests.py').readlines(),
-	# 	"".join(getFunction())
+	# 	"".join(getTestFile())
 	# )
-	with open('test.py', 'w+') as f:
-		for l in getFunction():
-			f.write(l)
 
+	setNumberOfHosts(4)
+	setNumberOfSwitches(4)
+
+	addLink('s', 1, 's', 2, 5)
+	addLink('s', 1, 's', 3, 5)
+	addLink('s', 2, 's', 4, 5)
+	addLink('s', 3, 's', 4, 5)
+
+	addLink('h', 1, 's', 1)
+	addLink('h', 2, 's', 2)
+	addLink('h', 3, 's', 3)
+	addLink('h', 4, 's', 4)
+
+	generateTopologyFile()
+
+	addPairToTest(1, 2)
+	addPairToTest(3, 2)
+	addPairToTest(4, 2)
+	
+	addPairToTest(2, 1)
+	addPairToTest(3, 1)
+	addPairToTest(4, 1)
+
+	addPairToTest(1, 4)
+	addPairToTest(2, 4)
+	addPairToTest(3, 4)
+
+	addPairToTest(1, 3)
+	addPairToTest(2, 3)
+	addPairToTest(4, 3)
+
+	generateTestFile()
+	
+
+# to use the output file "test.py":
 # py execfile('test.py')
 # py run_tests(net)
