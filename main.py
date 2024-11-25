@@ -45,7 +45,8 @@ def create_backbone_network(num_switches, num_hosts, connectivity_type='nsfnet')
             G.add_edge(f's{i}', f's{(i+1)%num_switches}')
         # Add some random additional links
         extra_links = num_switches // 2
-        while extra_links > 0:
+        while extra_links > 1:
+            print(extra_links)
             s1 = random.choice(switches)
             s2 = random.choice(switches)
             if s1 != s2 and not G.has_edge(s1, s2):
@@ -60,7 +61,7 @@ def create_backbone_network(num_switches, num_hosts, connectivity_type='nsfnet')
                 G.add_edge(f's{i}', f's{j}')
         # Add some random additional links
         extra_links = num_switches
-        while extra_links > 0:
+        while extra_links > 1:
             s1 = random.choice(switches)
             s2 = random.choice(switches)
             if s1 != s2 and not G.has_edge(s1, s2):
@@ -75,7 +76,7 @@ def create_backbone_network(num_switches, num_hosts, connectivity_type='nsfnet')
                 G.add_edge(f's{i}', f's{j}')
         # Add random additional links
         extra_links = num_switches * 2
-        while extra_links > 0:
+        while extra_links > 1:
             s1 = random.choice(switches)
             s2 = random.choice(switches)
             if s1 != s2 and not G.has_edge(s1, s2):
@@ -180,10 +181,10 @@ def generate_ONOS_config(num_switches: int):
     devices = {}
     
     for i in range(1, num_switches + 1):
-        device_key = f"device:s{i}"
+        device_key = f"device:s{i - 1}"
         devices[device_key] = {
             "basic": {
-                "managementAddress": f"grpc://127.0.0.1:{5000 + i}?device_id=1",
+                "managementAddress": f"grpc://127.0.0.1:{50000 + i}?device_id=1",
                 "driver": "stratum-bmv2",
                 "pipeconf": "org.onosproject.pipelines.basic"
             }

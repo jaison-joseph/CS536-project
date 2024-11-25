@@ -49,7 +49,7 @@ cli:
 # 	$(SCRIPTS)/onos-netcfg cfg/netcfg.json
 
 netcfg:
-	$(SCRIPTS)/onos-netcfg cfg/netcfg.json
+	$(SCRIPTS)/onos-netcfg cfg/onos_config.json
 
 # Usage: make host name=h1
 host:
