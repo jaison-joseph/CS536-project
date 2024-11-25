@@ -37,30 +37,28 @@ def run_setup():
     print("Send password")
     subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'rocks', 'C-m'])
     time.sleep(5)
-    # Activate fwd
-    print("Activate fwd")
-    subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'app activate fwd', 'C-m'])
-    time.sleep(2)
     
     # Window 4: NetCFG
     print("Window 4: NetCFG")
     subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
     subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', f'cd {cwd} && make netcfg', 'C-m'])
-    time.sleep(10)
+    time.sleep(5)
+
+	# Activate fwd
+    print("Activate fwd")
+    subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'app activate fwd', 'C-m'])
+    time.sleep(2)
     
     # Run pingall in mininet
     print("Run pingall in mininet")
     # subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
     subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:1', 'pingall', 'C-m'])
-    time.sleep(60)
+    time.sleep(10)
     print("Run pingall in mininet")
     # subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
     subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:1', 'pingall', 'C-m'])
-    time.sleep(60)
-    print("Run pingall in minine (3rd time's the charm)")
-    # subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
-    subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:1', 'pingall', 'C-m'])
-    time.sleep(60)
+    time.sleep(10)
+    
     
     # Window 5: Handle get-hops script
     print("Window 5: Handle get-hops script")

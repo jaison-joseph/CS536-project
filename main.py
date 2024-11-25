@@ -11,6 +11,8 @@ from main_extension import *
 # for the network topology, these are the link options inMbps
 bandwidth_options = [0.01, 0.04, 0.1]
 
+bandwidths = []
+
 def create_backbone_network(num_switches, num_hosts, connectivity_type='nsfnet'):
     """
     Create a backbone network topology.
@@ -154,18 +156,15 @@ def foo():
     print(list(G_nsf.nodes()))
     print(list(G_nsf.edges()))
 
-def generateTopologyJson(num_switches: int, num_hosts: int, connectivity_type: str):
-    allowed_network_types = ['nsfnet', 'geant2', 'germany50']
-    assert connectivity_type in allowed_network_types, f"invalid connectivity_type. Must be one of : {allowed_network_types}"
+def generateTopologyJson(num_switches: int, num_hosts: int, ):
 
-    # Generate the network
-    G = create_backbone_network(num_switches, num_hosts, connectivity_type)
+    assert len(bandwidths) > 0, "please call call_mininet_generator before calling generateTopologyJson"
     
     # Create the topology dictionary
     topology = {
         "number_hosts": num_hosts,
         "number_switches": num_switches,
-        "network_edges": list(G.edges())
+        "network_edges": bandwidths
     }
     
     # Ensure cfg directory exists
@@ -174,8 +173,6 @@ def generateTopologyJson(num_switches: int, num_hosts: int, connectivity_type: s
     # Save to JSON file
     with open("cfg/topo.json", "w") as f:
         json.dump(topology, f, indent=2)
-    
-    return G
 
 def generate_ONOS_config(num_switches: int):
     devices = {}
@@ -201,6 +198,18 @@ def generate_ONOS_config(num_switches: int):
     with open("cfg/onos_config.json", "w") as f:
         json.dump(config, f, indent=2)
 
+def generate_get_hops_script(num_switches: int):
+    with open('get-hops.sh', 'w+') as f:
+        f.write("#!/bin/bash\n\n")
+        for s in range(num_switches):
+            others = set(range(num_switches))
+            others.remove(s)
+            for o in others:
+                op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/device:s{s}/device:s{o} -u onos:rocks)" >> paths.txt'
+                f.write(op)
+                f.write('\n')
+                # f.write("echo >> paths.txt\n")
+
 def call_mininet_generator(num_switches: int, num_hosts: int, G: nx.classes.graph.Graph, fileName = 'custom-topo.py'):
     
     setNumberOfHosts(num_hosts)
@@ -213,6 +222,7 @@ def call_mininet_generator(num_switches: int, num_hosts: int, G: nx.classes.grap
         v2 = y[1:]
         bw = choice(bandwidth_options)
         addLink(t1, int(v1), t2, int(v2), bw)
+        bandwidths.append([x, y, bw])
 
     generateMininetTopologyFile()
 
@@ -229,13 +239,19 @@ def main():
     
     # Parse arguments
     args = parser.parse_args()
-    
-    # Generate topology and ONOS config
-    G = generateTopologyJson(args.num_switches, args.num_hosts, args.connectivity_type)
-    generate_ONOS_config(args.num_switches)
 
+	# Generate the network
+    G = create_backbone_network(args.num_switches, args.num_hosts, args.connectivity_type)
+    
     # generate mininet topology file
     call_mininet_generator(args.num_switches, args.num_hosts, G, 'custom-topo.py')
+
+    # Generate topology and ONOS config
+    generateTopologyJson(args.num_switches, args.num_hosts)
+    generate_ONOS_config(args.num_switches)
+
+	# generate the hops script
+    generate_get_hops_script(args.num_switches)
     
     print(f"Generated topology with {args.num_hosts} hosts and {args.num_switches} switches using {args.connectivity_type} connectivity")
     print("Files created: cfg/topo.json, cfg/onos_config.json, 'custom-topo.py")

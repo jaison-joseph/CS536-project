@@ -64,10 +64,18 @@ output: topology description
 			(hosts, switches, links between switches, what switch a host is connected to, link speed between nodes)
 		and 
 		ONOS config file
+		and
+		get-hops.sh
+-- main.py & main_extension.py
 
-input: 	mininet topology file & ONOS config file
-to: 	mininet + ONOS + get-bandwidth.py
+input: 	mininet topology file, ONOS config file, get-hops.sh
+to:		mininet + ONOS 
+output: hops.txt
+
+input: 	mininet topology file & hops.txt
+to: 	generateTrafficMatrix
 otuput: traffic matrix
+-- generateTrafficMatrix
 
 input: 	mininet topology file + traffic matrix
 to: 	main.py
