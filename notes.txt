@@ -72,3 +72,29 @@ otuput: traffic matrix
 input: 	mininet topology file + traffic matrix
 to: 	main.py
 output:	test file 
+
+(new shell) create the container named "onos" with "make controller"
+wait 15 seconds
+(new shell) create the container named "mn-stratum" with "make mininet"
+wait 5 seconds
+(new shell) create the container named "onos-cli" with "make cli"
+	it will start the ONOS shell and prompt for a password. Enter "rocks", then hit enteer
+	wait for 5 seconds
+	then, in the ONOS shell, run "app activate fwd"
+wait 2 seconds
+	(new shell) just run, from another host terminal/shell "make netcfg"
+wait 5 seconds,
+	from the container "mn-stratum" that is running the mininet shell, run "pingall" from the mininet shell
+wait 10 seconds
+	(new shell) 
+		run docker cp get-hops.sh onos:/root/onos/get-hops.sh
+		enter the ONOS container with:  docker exec -it onos bash
+		run get-hops.sh
+		copy the results back to the host at host location: /home/ubuntu/assignment0/public/assignments/temp-test/CS536-project/hops.txt
+
+echo "(s1, s2): $(paths device:s1 device:s2)" >> paths.txt
+echo "(s1, s3): $(paths device:s1 device:s3)" >> paths.txt
+echo "(s1, s4): $(paths device:s1 device:s4)" >> paths.txt
+echo "(s1, s5): $(paths device:s1 device:s5)" >> paths.txt
+
+docker cp foo.sh onos:/root/onos/foo.sh
