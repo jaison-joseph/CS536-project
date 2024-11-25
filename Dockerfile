@@ -8,4 +8,5 @@ RUN echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.
     apt-get --allow-unauthenticated install -y \
     iperf3 \
     python3 \
-    python3-pip
+    python3-pip \
+    d-itg 
