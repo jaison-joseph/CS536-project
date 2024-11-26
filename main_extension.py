@@ -24,7 +24,7 @@ links = set()
 lk = defaultdict(int)
 
 # for the traffic matrix
-trafficIntensity = 16
+trafficIntensity = 11 # TWEAK ME
 
 testDuration = 15
 defaultTestBandwidth = 1
@@ -169,6 +169,57 @@ def getDitgCommands():
 
 	return res
 
+def getDitgCommandsNoPrintStmts():
+	res = []
+	
+	assert len(targets) > 0
+	assert len(pairs) > 0
+	
+	res.append("# start ditg servers")
+	for t in targets:
+		# res.append(f"print('starting ditg server @ {t}')")
+		res.append(f"h{t}.cmd('nohup ITGRecv &')")
+	res.append("")
+
+	res.append("# wait for servers to start")
+	res.append("time.sleep(2)")
+	res.append("")
+
+	res.append("# run iperf clients")
+	for c, s, bw in pairs:
+		print(f"TM({c}, {s}) = {bw}")
+		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
+		# res.append(f"print('launching {c} -> {s} ITGSend')")
+		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		lk[s] -= 1
+	res.append("")
+
+	assert all(x == 0 for x in lk.values()), list(lk.values())
+	
+	res.append("# wait for ITGSend to finish")
+	res.append(f"time.sleep({testDuration * 2})")
+	res.append("")
+
+	res.append("# Kill ITGRecv servers")
+	for t in targets:
+		res.append(f"h{t}.cmd('killall ITGRecv')")
+	res.append("")
+
+	res.append("# wait for killing of ITGRecv processes")
+	res.append("time.sleep(2)")
+	res.append("")
+
+	res.append("# decode d-itg logs to 10-second interval stats")
+	for c, s, bw in pairs:
+		# res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} - logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(
+			f"h{c}.cmd('nohup ITGDec logs/{outputFilePrefix}_{c}_{s}.txt -c 1000 decoded/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')"
+		)
+	res.append("")
+
+	return res
+
 def getTestFile(target = 'iperf3'):
 	targetOptions = ['iperf3', 'ditg']
 	assert numHosts > 0, "please make a call to setNumberOfHosts first"
@@ -198,7 +249,7 @@ def getTestFile(target = 'iperf3'):
 
 	fileEnd = [
 		"	except Exception as e:",
-		"		print(e)",
+		"		return 1",
 		"",
 		"# this file is executed from the mininet shell; this is how to use it:",
 		"# mininet> py execfile('test.py')",
@@ -211,7 +262,8 @@ def getTestFile(target = 'iperf3'):
 	if target == 'iperf3':
 		commands = getIperfCommands()
 	elif target == 'ditg':
-		commands = getDitgCommands()
+		# commands = getDitgCommands() # TWEAK ME (use getDitgCommands() for log statements in test file)
+		commands = getDitgCommandsNoPrintStmts() # (or use or getDitgCommandsNoPrintStmts()) for no log print statements)
 	
 	for line in fileStart:
 		res.append(f"{line}\n")
@@ -267,6 +319,7 @@ def setNumberOfSwitches(x: int):
 	global numSwitches
 	numSwitches = x
 
+# in seconds
 def setTestDuration(x: int):
 	assert x > 0
 	global testDuration
@@ -354,6 +407,8 @@ def autoGenerateTest(networkConfigFile = 'cfg/topo.json'):
 	setNumberOfHosts(numHosts)
 	setNumberOfSwitches(numSwitches)
 
+	setTestDuration(60 * 2) # TWEAK ME
+
 	for n1, n2, bw in edges:
 		addLink(n1[0], int(n1[1:]), n2[0], int(n2[1:]), bw)
 
@@ -433,7 +488,7 @@ def exampleUsage():
 	generateMininetTopologyFile()
 
 	# for the test file
-	setTestDuration(60 * 2)
+	setTestDuration(15)
 	setTestBandwidth(1)
 
 	addPairToTest(1, 2)
