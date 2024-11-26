@@ -20,27 +20,6 @@
         "driver": "stratum-bmv2",
         "pipeconf": "org.onosproject.pipelines.basic"
       }
-    },
-    "device:s3": {
-      "basic": {
-        "managementAddress": "grpc://127.0.0.1:50004?device_id=1",
-        "driver": "stratum-bmv2",
-        "pipeconf": "org.onosproject.pipelines.basic"
-      }
-    },
-    "device:s4": {
-      "basic": {
-        "managementAddress": "grpc://127.0.0.1:50005?device_id=1",
-        "driver": "stratum-bmv2",
-        "pipeconf": "org.onosproject.pipelines.basic"
-      }
-    },
-    "device:s5": {
-      "basic": {
-        "managementAddress": "grpc://127.0.0.1:50006?device_id=1",
-        "driver": "stratum-bmv2",
-        "pipeconf": "org.onosproject.pipelines.basic"
-      }
     }
   }
 }

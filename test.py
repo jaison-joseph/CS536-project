@@ -9,26 +9,16 @@ def run_tests(net):
 
 
 	# Get host objects
-	h1, h2, h3, h4 = net.get('h1', 'h2', 'h3', 'h4')
+	h0, h1, h2 = net.get('h0', 'h1', 'h2')
 
 	try:
-		# start iperf servers
-		print('starting 3 iperf server(s) @ 1')
-		h1.cmd('iperf3 -s -p 5101&')
-		h1.cmd('iperf3 -s -p 5102&')
-		h1.cmd('iperf3 -s -p 5103&')
-		print('starting 3 iperf server(s) @ 2')
-		h2.cmd('iperf3 -s -p 5101&')
-		h2.cmd('iperf3 -s -p 5102&')
-		h2.cmd('iperf3 -s -p 5103&')
-		print('starting 3 iperf server(s) @ 3')
-		h3.cmd('iperf3 -s -p 5101&')
-		h3.cmd('iperf3 -s -p 5102&')
-		h3.cmd('iperf3 -s -p 5103&')
-		print('starting 3 iperf server(s) @ 4')
-		h4.cmd('iperf3 -s -p 5101&')
-		h4.cmd('iperf3 -s -p 5102&')
-		h4.cmd('iperf3 -s -p 5103&')
+		# start ditg servers
+		print('starting ditg server @ 0')
+		h0.cmd('nohup ITGRecv &')
+		print('starting ditg server @ 1')
+		h1.cmd('nohup ITGRecv &')
+		print('starting ditg server @ 2')
+		h2.cmd('nohup ITGRecv &')
 		
 		# wait for servers to start
 		print('wait for servers to start')
@@ -36,41 +26,28 @@ def run_tests(net):
 		
 		# run iperf clients
 		print('run iperf clients')
-		print('launching 1 -> 2 iperf')
-		h1.cmd('nohup iperf3 -c 10.0.0.2 -u -b 1M -t 15 -p 5103 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_1_2.txt 2>&1 &')
-		print('launching 2 -> 1 iperf')
-		h2.cmd('nohup iperf3 -c 10.0.0.1 -u -b 1M -t 15 -p 5103 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_2_1.txt 2>&1 &')
-		print('launching 4 -> 3 iperf')
-		h4.cmd('nohup iperf3 -c 10.0.0.3 -u -b 1M -t 15 -p 5103 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_4_3.txt 2>&1 &')
-		print('launching 1 -> 3 iperf')
-		h1.cmd('nohup iperf3 -c 10.0.0.3 -u -b 1M -t 15 -p 5102 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_1_3.txt 2>&1 &')
-		print('launching 4 -> 1 iperf')
-		h4.cmd('nohup iperf3 -c 10.0.0.1 -u -b 1M -t 15 -p 5102 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_4_1.txt 2>&1 &')
-		print('launching 2 -> 4 iperf')
-		h2.cmd('nohup iperf3 -c 10.0.0.4 -u -b 1M -t 15 -p 5103 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_2_4.txt 2>&1 &')
-		print('launching 4 -> 2 iperf')
-		h4.cmd('nohup iperf3 -c 10.0.0.2 -u -b 1M -t 15 -p 5102 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_4_2.txt 2>&1 &')
-		print('launching 3 -> 2 iperf')
-		h3.cmd('nohup iperf3 -c 10.0.0.2 -u -b 1M -t 15 -p 5101 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_3_2.txt 2>&1 &')
-		print('launching 3 -> 4 iperf')
-		h3.cmd('nohup iperf3 -c 10.0.0.4 -u -b 1M -t 15 -p 5102 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_3_4.txt 2>&1 &')
-		print('launching 2 -> 3 iperf')
-		h2.cmd('nohup iperf3 -c 10.0.0.3 -u -b 1M -t 15 -p 5101 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_2_3.txt 2>&1 &')
-		print('launching 3 -> 1 iperf')
-		h3.cmd('nohup iperf3 -c 10.0.0.1 -u -b 1M -t 15 -p 5101 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_3_1.txt 2>&1 &')
-		print('launching 1 -> 4 iperf')
-		h1.cmd('nohup iperf3 -c 10.0.0.4 -u -b 1M -t 15 -p 5101 -i 1 --verbose  --json > logs/2024-11-24-03:06:23.409267_0_0_1_4.txt 2>&1 &')
+		print('launching 2 -> 0 ITGSend')
+		h2.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 5.26367 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_2_0.txt 2>&1 &')
+		print('launching 1 -> 0 ITGSend')
+		h1.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 3.31968 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_1_0.txt 2>&1 &')
+		print('launching 0 -> 2 ITGSend')
+		h0.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 4.87267 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_0_2.txt 2>&1 &')
+		print('launching 0 -> 1 ITGSend')
+		h0.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 4.41013 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_0_1.txt 2>&1 &')
+		print('launching 1 -> 2 ITGSend')
+		h1.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 1.20343 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_1_2.txt 2>&1 &')
+		print('launching 2 -> 1 ITGSend')
+		h2.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 4.81085 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_2_1.txt 2>&1 &')
 		
-		# wait for iperf clients to finish
-		print('wait for iperf clients to finish')
+		# wait for ITGSend to finish
+		print('wait for ITGSend to finish')
 		time.sleep(30)
 		
-		# Kill iperf servers
-		print('Kill iperf servers')
-		h1.cmd('killall iperf3')
-		h2.cmd('killall iperf3')
-		h3.cmd('killall iperf3')
-		h4.cmd('killall iperf3')
+		# Kill ITGRecv servers
+		print('Kill ITGRecv servers')
+		h0.cmd('killall ITGRecv')
+		h1.cmd('killall ITGRecv')
+		h2.cmd('killall ITGRecv')
 		
 	except Exception as e:
 		print(e)

@@ -2,6 +2,8 @@
 
 import datetime
 from collections import defaultdict
+import json
+from random import uniform
 
 # we use numbers in [1, numHosts + 1] to identify each host in the code
 numHosts = 0
@@ -21,8 +23,29 @@ links = set()
 # testing file bookkeeping
 lk = defaultdict(int)
 
+# for the traffic matrix
+trafficIntensity = 11
+
 testDuration = 15
 defaultTestBandwidth = 1
+
+def read_topo_json(filename):
+    with open(filename, 'r') as file:
+        data = json.load(file)
+        
+    num_hosts = data['number_hosts']
+    num_switches = data['number_switches']
+    network_edges = data['network_edges']
+    
+    return num_hosts, num_switches, network_edges
+
+def getTraficMatrixEntry():
+	assert numHosts > 1
+	# TM(Si, Dj) = U(0.1, 1) * TI / (N-1)
+	u = uniform(0.1, 1.0)  
+	# or with numpy: u = np.random.uniform(0.1, 1.0)
+	tm_value = u * trafficIntensity / (numHosts-1)
+	return tm_value
 
 # will output code to test connection between hosts clientHostNum and host serverHostNum
 # will setup an iperf3 server at host serverHostNum
@@ -41,7 +64,7 @@ def addPairToTest(clientHostNum: int, serverHostNum: int, bw = -1):
 
 	lk[serverHostNum] += 1
 
-def getCommands():
+def getIperfCommands():
 	res = []
 	
 	assert len(targets) > 0
@@ -90,9 +113,53 @@ def getCommands():
 
 	return res
 
-def getTestFile():
+def getDitgCommands():
+	res = []
+	
+	assert len(targets) > 0
+	assert len(pairs) > 0
+	
+	res.append("# start ditg servers")
+	for t in targets:
+		res.append(f"print('starting ditg server @ {t}')")
+		res.append(f"h{t}.cmd('nohup ITGRecv &')")
+	res.append("")
+
+	res.append("# wait for servers to start")
+	res.append("print('wait for servers to start')")
+	res.append("time.sleep(2)")
+	res.append("")
+
+	res.append("# run iperf clients")
+	res.append("print('run iperf clients')")
+	for c, s, bw in pairs:
+		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
+		res.append(f"print('launching {c} -> {s} ITGSend')")
+		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -C {bw:.5f} -t {testDuration * 1000} -x {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		lk[s] -= 1
+	res.append("")
+
+	assert all(x == 0 for x in lk.values()), list(lk.values())
+	
+	res.append("# wait for ITGSend to finish")
+	res.append("print('wait for ITGSend to finish')")
+	res.append(f"time.sleep({testDuration * 2})")
+	res.append("")
+
+	res.append("# Kill ITGRecv servers")
+	res.append("print('Kill ITGRecv servers')")
+	for t in targets:
+		res.append(f"h{t}.cmd('killall ITGRecv')")
+	res.append("")
+
+	return res
+
+def getTestFile(target = 'iperf3'):
+	targetOptions = ['iperf3', 'ditg']
 	assert numHosts > 0, "please make a call to setNumberOfHosts first"
 	assert numSwitches > 0, "please make a call to setNumberOfSwitches first"
+	assert target in targetOptions, f"invalid target option, should be one of {targetOptions}"
 	hostLineLhs = ", ".join(["h"+str(i) for i in range(numHosts)])
 	hostLineRhs = ", ".join(["'h"+str(i)+"'" for i in range(numHosts)])
 
@@ -127,7 +194,11 @@ def getTestFile():
 	indentLevel = 2
 
 	res = []
-	commands = getCommands()
+	if target == 'iperf3':
+		commands = getIperfCommands()
+	elif target == 'ditg':
+		commands = getDitgCommands()
+	
 	for line in fileStart:
 		res.append(f"{line}\n")
 	for line in commands:
@@ -263,46 +334,69 @@ def generateMininetTopologyFile(fileName = 'custom-topo.py'):
 		output_file
 	)	
 
-'''
+def autoGenerateTest(networkConfigFile = 'cfg/topo.json'):
+	numHosts, numSwitches, edges = read_topo_json(networkConfigFile)
 
-this file modifies custom-topo.py and test.py
-to use this file, you need to make the following function calls (ideally in this order):
+	setNumberOfHosts(numHosts)
+	setNumberOfSwitches(numSwitches)
 
-- setNumberOfHosts(x: int) # number of hosts in the topology
-	if you set setNumberOfHosts to 5, then you reference them by a number in the range [0, 4]
+	for n1, n2, bw in edges:
+		addLink(n1[0], int(n1[1:]), n2[0], int(n2[1:]), bw)
 
-- setNumberOfSwitches(x: int) # number of switches in the topology
-	- # you want to call these 2 functions first, before the other functions
+	# TODO:
+	# for each pair of hosts to test, call addPairToTest
+	# e.g. for testing connection between s1 & s2 & 100kbps, addPairToTest(1, 2, 0.1)
+	# TM(Si, Dj) = U(0.1, 1) * TI / (N-1) 
+	for i in range(numHosts):
+		for j in range(numHosts):
+			if i == j:
+				continue
+			addPairToTest(i, j, getTraficMatrixEntry())
 
-- addLink(t1, x, t2, y, bandwith)
-	- t1 & t2: set it to 's' for switch or 'h' for host
-	- x & y: int for the host/switch number
-	- (optional) bandwidth: link speed limit in mbps
-	- if you have a link from host 1 to host 2 already, you can't establish another link from host 2 to host 1
-
-- generateMininetTopologyFile()
-	- you can make this call after all your calls to addLink()
-	- this function modifies the custom-topo.py, used by mininet
-
-- setTestDuration(x)
-	- the duration the tests should run for, in seconds
-	- default value is 15 seconds, if this function is not called
-
-- setTestBandwidth(x)
-	- the link speed each test pair of hosts should attempt to reach in mbps
-	- default value is 1 mbps, if this function is not called
-
-- addPairToTest(x, y, bw)
-	- add a pair of hosts to test the bandwidth of
-	- x & y: int: value in [1, number-of-hosts + 1]
-	- (optional) bw: the throughput this connection should attempt to reach in mbps
-		- if not specified, it will default to the value of defaultTestBandwidth 
-
-- generateTestFile()
-	- generate the test.py file
+	with open('test.py', 'w+') as f:
+		for l in getTestFile('ditg'):
+			f.write(l)
 
 '''
-if __name__ == '__main__':
+
+	this file modifies custom-topo.py and test.py
+	to use this file, you need to make the following function calls (ideally in this order):
+
+	- setNumberOfHosts(x: int) # number of hosts in the topology
+		if you set setNumberOfHosts to 5, then you reference them by a number in the range [0, 4]
+
+	- setNumberOfSwitches(x: int) # number of switches in the topology
+		- # you want to call these 2 functions first, before the other functions
+
+	- addLink(t1, x, t2, y, bandwith)
+		- t1 & t2: set it to 's' for switch or 'h' for host
+		- x & y: int for the host/switch number
+		- (optional) bandwidth: link speed limit in mbps
+		- if you have a link from host 1 to host 2 already, you can't establish another link from host 2 to host 1
+
+	- generateMininetTopologyFile()
+		- you can make this call after all your calls to addLink()
+		- this function modifies the custom-topo.py, used by mininet
+
+	- setTestDuration(x)
+		- the duration the tests should run for, in seconds
+		- default value is 15 seconds, if this function is not called
+
+	- setTestBandwidth(x)
+		- the link speed each test pair of hosts should attempt to reach in mbps
+		- default value is 1 mbps, if this function is not called
+
+	- addPairToTest(x, y, bw)
+		- add a pair of hosts to test the bandwidth of
+		- x & y: int: value in [1, number-of-hosts + 1]
+		- (optional) bw: the throughput this connection should attempt to reach in mbps
+			- if not specified, it will default to the value of defaultTestBandwidth 
+
+	- generateTestFile()
+		- generate the test.py file
+
+'''
+def exampleUsage():
 	# replace_test_section(
 	# 	open('custom-topo-with-tests.py').readlines(),
 	# 	"".join(getTestFile())
@@ -346,6 +440,9 @@ if __name__ == '__main__':
 	addPairToTest(4, 3)
 
 	generateTestFile()
+
+if __name__ == '__main__':
+	autoGenerateTest()
 	
 
 # to use the output file "test.py":
