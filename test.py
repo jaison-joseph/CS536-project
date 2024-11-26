@@ -9,7 +9,7 @@ def run_tests(net):
 
 
 	# Get host objects
-	h0, h1, h2 = net.get('h0', 'h1', 'h2')
+	h0, h1, h2, h3 = net.get('h0', 'h1', 'h2', 'h3')
 
 	try:
 		# start ditg servers
@@ -19,6 +19,8 @@ def run_tests(net):
 		h1.cmd('nohup ITGRecv &')
 		print('starting ditg server @ 2')
 		h2.cmd('nohup ITGRecv &')
+		print('starting ditg server @ 3')
+		h3.cmd('nohup ITGRecv &')
 		
 		# wait for servers to start
 		print('wait for servers to start')
@@ -26,18 +28,30 @@ def run_tests(net):
 		
 		# run iperf clients
 		print('run iperf clients')
-		print('launching 2 -> 0 ITGSend')
-		h2.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 5.26367 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_2_0.txt 2>&1 &')
-		print('launching 1 -> 0 ITGSend')
-		h1.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 3.31968 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_1_0.txt 2>&1 &')
-		print('launching 0 -> 2 ITGSend')
-		h0.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 4.87267 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_0_2.txt 2>&1 &')
 		print('launching 0 -> 1 ITGSend')
-		h0.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 4.41013 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_0_1.txt 2>&1 &')
+		h0.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 2.70984 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_0_1.txt 2>&1 &')
 		print('launching 1 -> 2 ITGSend')
-		h1.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 1.20343 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_1_2.txt 2>&1 &')
+		h1.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 3.22250 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_1_2.txt 2>&1 &')
+		print('launching 2 -> 0 ITGSend')
+		h2.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 0.52373 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_2_0.txt 2>&1 &')
+		print('launching 1 -> 3 ITGSend')
+		h1.cmd('nohup ITGSend -a 10.0.0.4 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 1.16544 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_1_3.txt 2>&1 &')
 		print('launching 2 -> 1 ITGSend')
-		h2.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 4.81085 -t 15000 -x logs/2024-11-26-06:56:31.872282_0_0_2_1.txt 2>&1 &')
+		h2.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 2.96090 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_2_1.txt 2>&1 &')
+		print('launching 1 -> 0 ITGSend')
+		h1.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 2.79867 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_1_0.txt 2>&1 &')
+		print('launching 3 -> 2 ITGSend')
+		h3.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 2.31692 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_3_2.txt 2>&1 &')
+		print('launching 0 -> 2 ITGSend')
+		h0.cmd('nohup ITGSend -a 10.0.0.3 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 1.38556 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_0_2.txt 2>&1 &')
+		print('launching 3 -> 1 ITGSend')
+		h3.cmd('nohup ITGSend -a 10.0.0.2 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 3.11946 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_3_1.txt 2>&1 &')
+		print('launching 2 -> 3 ITGSend')
+		h2.cmd('nohup ITGSend -a 10.0.0.4 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 1.01068 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_2_3.txt 2>&1 &')
+		print('launching 3 -> 0 ITGSend')
+		h3.cmd('nohup ITGSend -a 10.0.0.1 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 3.38893 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_3_0.txt 2>&1 &')
+		print('launching 0 -> 3 ITGSend')
+		h0.cmd('nohup ITGSend -a 10.0.0.4 -T UDP -Fs cfg/ditg_packet_sizes.txt -C 2.66301 -t 15000 -x logs/2024-11-26-08:01:04.345364_0_0_0_3.txt 2>&1 &')
 		
 		# wait for ITGSend to finish
 		print('wait for ITGSend to finish')
@@ -48,6 +62,7 @@ def run_tests(net):
 		h0.cmd('killall ITGRecv')
 		h1.cmd('killall ITGRecv')
 		h2.cmd('killall ITGRecv')
+		h3.cmd('killall ITGRecv')
 		
 	except Exception as e:
 		print(e)

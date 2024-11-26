@@ -106,3 +106,9 @@ echo "(s1, s4): $(paths device:s1 device:s4)" >> paths.txt
 echo "(s1, s5): $(paths device:s1 device:s5)" >> paths.txt
 
 docker cp foo.sh onos:/root/onos/foo.sh
+
+itgdec command for script:
+h1 ITGDec logs/2024-11-26-06:56:31.872282_0_0_2_0.txt -c 1000 decoded/2024-11-26-06:56:31.872282_0_0_2_0.txt
+
+dirty test for core scripts functionality
+python3 main.py 3 3 nsfnet && python3 main_extension.py
