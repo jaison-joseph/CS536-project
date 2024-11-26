@@ -194,9 +194,9 @@ def setTestBandwidth(x: int):
 
 # add a link between 2 network entities (hosts/switches)
 # t1: 'h' (host) or 's': switch
-# x1: a number in the range [1, number of hosts] if t1 == 'h' or [1, number of switches] if t1 == 's'
+# x1: a number in the range [0, number of hosts) if t1 == 'h' or [0, number of switches) if t1 == 's'
 # t2: 'h' (host) or 's': switch
-# x2: a number in the range [1, number of hosts] if t1 == 'h' or [1, number of switches] if t1 == 's'
+# x2: a number in the range [0, number of hosts) if t1 == 'h' or [0, number of switches) if t1 == 's'
 # bw: bandwidth of the link, in mbps (0 if you want to leave it unspecified)
 # if you have a link from host 1 to host 2 already, you can't establish another link from host 2 to host 1
 def addLink(t1: str, x1: int, t2: str, x2: int, bw: int = 0):
@@ -269,7 +269,7 @@ this file modifies custom-topo.py and test.py
 to use this file, you need to make the following function calls (ideally in this order):
 
 - setNumberOfHosts(x: int) # number of hosts in the topology
-	if you set setNumberOfHosts to 5, then you reference them by a number in the range [1, 6]
+	if you set setNumberOfHosts to 5, then you reference them by a number in the range [0, 4]
 
 - setNumberOfSwitches(x: int) # number of switches in the topology
 	- # you want to call these 2 functions first, before the other functions

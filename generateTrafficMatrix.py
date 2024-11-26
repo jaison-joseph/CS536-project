@@ -17,11 +17,11 @@ def read_topo_json(filename):
 
 '''
 [
-	('s0', 's3'), 
-	[
-		[('s0', 's1'), ('s1', 's3')], 
-		[('s0', 's2'), ('s2', 's3')]
-	]
+    ('s0', 's3'), 
+    [
+        [('s0', 's1'), ('s1', 's3')], 
+        [('s0', 's2'), ('s2', 's3')]
+    ]
 ]
 '''
 def read_hops_txt(filename):
@@ -129,10 +129,8 @@ def runner():
 
     matrix = generateTrafficMatrix(numHosts)
 
-    with open('traffic-matrix.txt', 'w+') as f:
-        for row in matrix:
-            f.write(str(row)[1:-1])
-            f.write('\n')
+    with open('traffic-matrix.json', 'w') as f:
+        json.dump(matrix, f, indent=2)
 
 if __name__ == "__main__":
     runner()
