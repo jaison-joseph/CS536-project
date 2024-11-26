@@ -102,7 +102,7 @@ def getIperfCommands():
 	
 	res.append("# wait for iperf clients to finish")
 	res.append("print('wait for iperf clients to finish')")
-	res.append(f"time.sleep({testDuration * 2})")
+	res.append(f"time.sleep({testDuration + 30})")
 	res.append("")
 
 	res.append("# Kill iperf servers")
@@ -133,7 +133,7 @@ def getDitgCommands():
 	res.append("# run iperf clients")
 	res.append("print('run iperf clients')")
 	for c, s, bw in pairs:
-		print(f"TM({c}, {s}) = {bw}")
+		# print(f"TM({c}, {s}) = {bw}")
 		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
 		res.append(f"print('launching {c} -> {s} ITGSend')")
 		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
@@ -187,7 +187,7 @@ def getDitgCommandsNoPrintStmts():
 
 	res.append("# run iperf clients")
 	for c, s, bw in pairs:
-		print(f"TM({c}, {s}) = {bw}")
+		# print(f"TM({c}, {s}) = {bw}")
 		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
 		# res.append(f"print('launching {c} -> {s} ITGSend')")
 		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
@@ -311,13 +311,18 @@ def generateTestFile():
 
 def setNumberOfHosts(x: int):
 	assert x > 0
-	global numHosts
+	global numHosts, outputFilePrefix
 	numHosts = x
+	outputFilePrefix = f"{str(datetime.datetime.now()).replace(' ', '-')}" + \
+					f"_{str(numHosts)}_{str(numSwitches)}"
+	
 
 def setNumberOfSwitches(x: int):
 	assert x > 0
-	global numSwitches
+	global numSwitches, outputFilePrefix
 	numSwitches = x
+	outputFilePrefix = f"{str(datetime.datetime.now()).replace(' ', '-')}" + \
+					f"_{str(numHosts)}_{str(numSwitches)}"
 
 # in seconds
 def setTestDuration(x: int):

@@ -4,19 +4,19 @@ import os
 import argparse
 
 def getCommandLineArgs():
-	parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
-	
-	# Add arguments
-	parser.add_argument('num_hosts', type=int, help='Number of hosts')
-	parser.add_argument('num_switches', type=int, help='Number of switches')
-	parser.add_argument('connectivity_type', type=str, choices=['nsfnet', 'geant2', 'germany50'],
-						help='Type of network connectivity (nsfnet, geant2, or germany50)')
-	parser.add_argument('-v', '--visualize', action='store_true', help='visualize the network topology.')
-	
-	# Parse arguments
-	args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
+    
+    # Add arguments
+    parser.add_argument('num_hosts', type=int, help='Number of hosts')
+    parser.add_argument('num_switches', type=int, help='Number of switches')
+    parser.add_argument('connectivity_type', type=str, choices=['nsfnet', 'geant2', 'germany50'],
+                        help='Type of network connectivity (nsfnet, geant2, or germany50)')
+    parser.add_argument('-v', '--visualize', action='store_true', help='visualize the network topology.')
+    
+    # Parse arguments
+    args = parser.parse_args()
 
-	return args
+    return args
 
 def cleanup():
     """Clean up mininet container and tmux session"""
@@ -39,7 +39,7 @@ def check_mininet_cli_ready():
         )
         # Check if the last non-empty line ends with 'mininet>'
         lines = [line for line in result.stdout.split('\n') if line.strip()]
-		
+        
         return lines and lines[-1].strip().endswith('mininet>')
     except Exception as e:
         print(f"Error checking mininet CLI: {e}")
@@ -122,6 +122,7 @@ def run_setup(args, max_attempts=5):
                 subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py execfile(\'test.py\')', 'C-m'])
                 time.sleep(3)
                 subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
+                time.sleep(200)
             else:
                 print("Mininet CLI not ready, will retry...")
                 continue
