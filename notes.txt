@@ -8,6 +8,7 @@ mininet> h2 ITGSend -a 10.0.0.1 -T UDP -c 100 -C 10 -t 60000 -l sender.log -x re
      -c is packet size (default 512 bytes)
     -C packet send rate default is 1000 pkts/s
     -t duration in ms
+	-E: mean of exponential distribution for ITGSend to use for traffic rate
 ...
 mininet> h2 ITGDec receiver.log > receiver-decoded.txt
 

@@ -10,7 +10,7 @@ numHosts = 0
 numSwitches = 0
 
 # timestamp_number-of-hosts_number-of-switches
-outputFilePrefix = f"logs/{str(datetime.datetime.now()).replace(' ', '-')}" + \
+outputFilePrefix = f"{str(datetime.datetime.now()).replace(' ', '-')}" + \
 					f"_{str(numHosts)}_{str(numSwitches)}"
 
 # targets and pairs are for the testing file bookkeeping
@@ -24,7 +24,7 @@ links = set()
 lk = defaultdict(int)
 
 # for the traffic matrix
-trafficIntensity = 11
+trafficIntensity = 16
 
 testDuration = 15
 defaultTestBandwidth = 1
@@ -87,13 +87,13 @@ def getIperfCommands():
 	for c, s, bw in pairs:
 		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
 		res.append(f"print('launching {c} -> {s} iperf')")
-		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
-		res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -b {bw}M -t {testDuration} -p {5100 + lk[s]} -i 1 --verbose  --json > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
-		# cmd = f"h{c}.cmd('nohup ( (date > {outputFilePrefix}_{c}_{s}.txt) " + \
+		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -b {bw}M -t {testDuration} -p {5100 + lk[s]} -i 1 --verbose  --json > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		# cmd = f"h{c}.cmd('nohup ( (date > logs/{outputFilePrefix}_{c}_{s}.txt) " + \
 		# "&& " + \
-		# f"(iperf3 -c 10.0.0.{s} -u -b 20M -t 15 -p {5100 + lk[s]} -i 1 >> {outputFilePrefix}_{c}_{s}.txt) " + \
+		# f"(iperf3 -c 10.0.0.{s} -u -b 20M -t 15 -p {5100 + lk[s]} -i 1 >> logs/{outputFilePrefix}_{c}_{s}.txt) " + \
 		# "&& " + \
-		# f"(date >> {outputFilePrefix}_{c}_{s}.txt)) 2>&1 &')"
+		# f"(date >> logs/{outputFilePrefix}_{c}_{s}.txt)) 2>&1 &')"
 		# res.append(cmd)
 		lk[s] -= 1
 	res.append("")
@@ -133,10 +133,11 @@ def getDitgCommands():
 	res.append("# run iperf clients")
 	res.append("print('run iperf clients')")
 	for c, s, bw in pairs:
+		print(f"TM({c}, {s}) = {bw}")
 		# res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
 		res.append(f"print('launching {c} -> {s} ITGSend')")
-		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
-		res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -C {bw:.5f} -t {testDuration * 1000} -x {outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		# res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
 		lk[s] -= 1
 	res.append("")
 
@@ -151,6 +152,19 @@ def getDitgCommands():
 	res.append("print('Kill ITGRecv servers')")
 	for t in targets:
 		res.append(f"h{t}.cmd('killall ITGRecv')")
+	res.append("")
+
+	res.append("# wait for killing of ITGRecv processes")
+	res.append("print('wait for killing of ITGRecv processes')")
+	res.append("time.sleep(2)")
+	res.append("")
+
+	res.append("# decode d-itg logs to 10-second interval stats")
+	for c, s, bw in pairs:
+		# res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} - logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+		res.append(
+			f"h{c}.cmd('nohup ITGDec logs/{outputFilePrefix}_{c}_{s}.txt -c 1000 decoded/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')"
+		)
 	res.append("")
 
 	return res
@@ -419,7 +433,7 @@ def exampleUsage():
 	generateMininetTopologyFile()
 
 	# for the test file
-	setTestDuration(15)
+	setTestDuration(60 * 2)
 	setTestBandwidth(1)
 
 	addPairToTest(1, 2)
