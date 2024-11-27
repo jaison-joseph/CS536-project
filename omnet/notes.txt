@@ -1,0 +1,6 @@
+in the omnet++ container, to ensure omnet is installed:
+	opp_run -v
+
+runinng omnetpp will try to launch the IDE, separate from omnet
+
+after cd into 'nsfnet_simulation', 

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# -v: mount 
+# -u "$(id -u):$(id -g)": makes the container run as your user:group instead of as root
+
+OMNET_DOCKER_NAME=${OMNET_DOCKER_NAME:-omnet}
+OMNET_MOUNT_DIR_NAME=${OMNET_MOUNT_DIR_NAME:-omnet-workdir}
+
+# make the mount directory where the omnet container will reside
+# the mount point is $pwd/omnet-workdir
+if [ -d "$OMNET_MOUNT_DIR_NAME" ]; then
+    echo "Directory "$OMNET_MOUNT_DIR_NAME" exists"
+else
+    echo "Directory "$OMNET_MOUNT_DIR_NAME" does not exist"
+    mkdir "$OMNET_MOUNT_DIR_NAME"
+	chown -R "$(id -u):$(id -g)" "$OMNET_MOUNT_DIR_NAME/"
+fi
+
+
+docker run --privileged --rm -it \
+    --name $OMNET_DOCKER_NAME \
+    -v "$(pwd)"/"$OMNET_MOUNT_DIR_NAME":/workdir \
+    -w /workdir \
+    --cpus=1.5 \
+    --memory=5g \
+    --memory-swap=6g \
+    --shm-size=1g \
+    -u "$(id -u):$(id -g)" \
+    omnetpp/omnetpp:u18.04-5.5.1
