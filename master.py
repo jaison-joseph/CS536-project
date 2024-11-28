@@ -3,19 +3,44 @@ import time
 import os
 import argparse
 
+from main import mininetConfigFileName, topoFileName, onosConfigFileName
+from main_extension import testFileName
+
 def getCommandLineArgs():
     parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
     
     # Add arguments
-    parser.add_argument('num_hosts', type=int, help='Number of hosts')
-    parser.add_argument('num_switches', type=int, help='Number of switches')
-    parser.add_argument('connectivity_type', type=str, choices=['nsfnet', 'geant2', 'germany50'],
-                        help='Type of network connectivity (nsfnet, geant2, or germany50)')
-    parser.add_argument('-v', '--visualize', action='store_true', help='visualize the network topology.')
+    parser.add_argument(
+        'num_nodes', type=int, 
+        help='Number of nodes (switches and hosts both)'
+    )
     
-    # Parse arguments
-    args = parser.parse_args()
+    parser.add_argument(
+        'connectivity_type', type=str, choices=['nsfnet', 'geant2', 'germany50'],
+        help='Type of network connectivity (nsfnet, geant2, or germany50)'
+    )
 
+    parser.add_argument(
+        'num_runs', type=int, 
+        help='Number of times the simulation should be run.'
+    )
+
+    parser.add_argument(
+        'test_duration', type=int, 
+        help='time for which the simulation/test should run IN SECONDS'
+    )
+
+    parser.add_argument(
+        'output_stats_frequency', type=int, 
+        help='the frequency at which the network statistics should be reported from the raw data IN MILLISECONDS'
+    )
+
+    parser.add_argument(
+        'traffic_intensity', type=int, 
+        help='traffic intensity (as described in RouteNet: in range [11, 16])'
+    )
+
+    args = parser.parse_args()
     return args
 
 def cleanup():
@@ -45,7 +70,134 @@ def check_mininet_cli_ready():
         print(f"Error checking mininet CLI: {e}")
         return False
 
-def run_setup(args, max_attempts=5):
+def runner(args):
+    simulationDir = f"simulations/{args.connectivity_type}_{args.num_nodes}_{args.traffic_intensity}/"
+    if not os.path.isdir(simulationDir):
+        os.makedirs(simulationDir)
+    for runNum in range(1, args.num_runs + 1):
+        print('-----' * 15)
+        simulationDir = f"simulations/{args.connectivity_type}_{args.num_nodes}_{args.traffic_intensity}/run_{runNum}/"
+        if not os.path.isdir(simulationDir):
+            os.mkdir(simulationDir)
+        rawDir = os.path.join(simulationDir, "raw_data")
+        decodedDir = os.path.join(simulationDir, "decoded_data")
+        if not os.path.isdir(rawDir):
+            os.mkdir(rawDir)
+        if not os.path.isdir(decodedDir):
+            os.mkdir(decodedDir)
+        calculated_args = {
+            'topo_file_path': simulationDir,
+            'onos_config_file_path': simulationDir,
+            'mininet_config_file_path': simulationDir,
+            'test_file_path': simulationDir,
+            'raw_file_path': rawDir,
+            'decoded_file_path': decodedDir,
+        }
+        # mn_stratum is mininet
+        calculated_args["mn_stratum_topo_file"] = \
+            os.path.join(calculated_args["mininet_config_file_path"], mininetConfigFileName)
+        calculated_args["onos_config_file"] = \
+            os.path.join(calculated_args["onos_config_file_path"], onosConfigFileName)
+        calculated_args["topo_file"] = \
+            os.path.join(calculated_args["topo_file_path"], topoFileName)
+        calculated_args["test_file"] = \
+            os.path.join(calculated_args["test_file_path"], testFileName)
+        # run_setup(args, calculated_args)
+        run_setup_only_print(args, calculated_args)
+
+def ppprint(x):
+    print(" ".join(x))
+
+def run_setup_only_print(args, calculated_args, max_attempts = 5):
+    
+    # Create new tmux session
+    print("Create new tmux session")
+    # subprocess.run(['tmux', 'new-session', '-d', '-s', 'onos_session'])
+    cwd = os.getcwd()
+
+    # Rest of your window creation and setup code...
+    # Window 1: Generate network config and test script
+    print("Window 1: Creating configuration files...")
+
+    main_py_args = \
+        f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
+        f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]}'
+    main_extension_py_args = \
+        f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
+        f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
+        f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
+    
+    # subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+    ppprint([
+        'tmux', 'send-keys', '-t', 'onos_session:0', 
+        f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
+        'C-m'
+    ])
+    # time.sleep(4)
+
+    # Window 2: Controller
+    ppprint("Window 2: Starting controller...")
+    # subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:1', f'cd {cwd} && make controller', 'C-m'])
+    # time.sleep(55)
+
+    # Window 3: Mininet
+    ppprint("Window 3: Starting Mininet...")
+    # subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:2',
+        f'cd {cwd} && make mininet MN_STRATUM_TOPO_FILE={calculated_args["mn_stratum_topo_file"]}', 'C-m'
+    ])
+    # time.sleep(10)
+
+    # Window 4: ONOS CLI
+    ppprint("Window 4: Starting ONOS CLI...")
+    # subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:3', f'cd {cwd} && make cli', 'C-m'])
+    # time.sleep(5)
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:3', 'rocks', 'C-m'])
+    # time.sleep(5)
+
+    # Window 5: NetCFG
+    ppprint("Window 5: Configuring network...")
+    # subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:4',
+        f'cd {cwd} && make netcfg ONOS_CONFIG_FILE={calculated_args["onos_config_file"]}', 'C-m'
+    ])
+    # time.sleep(5)
+
+    # Activate fwd
+    ppprint("Activating forwarding...")
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:3', 'app activate fwd', 'C-m'])
+    # time.sleep(2)
+
+    # Run pingall twice
+    ppprint("Running first pingall...")
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+    # time.sleep(10)
+    ppprint("Running second pingall...")
+    ppprint(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+    # time.sleep(10)
+
+    # Check if mininet CLI is ready
+    if True:
+        ppprint("Mininet CLI is ready!")
+        success = True
+
+        # Continue with test execution
+        ppprint("Running tests...")
+        ppprint(['tmux', 'send-keys', '-t', 'onos_session:2',
+            f'py execfile(\'{calculated_args["test_file"]}\')', 'C-m'
+        ])
+        # time.sleep(3)
+        ppprint(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
+        # time.sleep(200)
+    else:
+        ppprint("Mininet CLI not ready, will retry...")
+        # continue
+
+
+
+def run_setup(args, calculated_args, max_attempts=5):
     attempt = 0
     success = False
 
@@ -65,10 +217,19 @@ def run_setup(args, max_attempts=5):
             # Rest of your window creation and setup code...
             # Window 1: Generate network config and test script
             print("Window 1: Creating configuration files...")
+
+            main_py_args = \
+                f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
+                f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]}'
+            main_extension_py_args = \
+                f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
+                f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
+                f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
+            
             subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
             subprocess.run([
                 'tmux', 'send-keys', '-t', 'onos_session:0', 
-                f"cd {cwd} && python3 main.py {args.num_switches} {args.num_hosts} {args.connectivity_type} && python3 main_extension.py", 
+                f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
                 'C-m'
             ])
             time.sleep(4)
@@ -82,7 +243,9 @@ def run_setup(args, max_attempts=5):
             # Window 3: Mininet
             print("Window 3: Starting Mininet...")
             subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', f'cd {cwd} && make mininet', 'C-m'])
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
+                f'cd {cwd} && make mininet MN_STRATUM_TOPO_FILE={calculated_args["mn_stratum_topo_file"]}', 'C-m'
+            ])
             time.sleep(10)
 
             # Window 4: ONOS CLI
@@ -96,7 +259,9 @@ def run_setup(args, max_attempts=5):
             # Window 5: NetCFG
             print("Window 5: Configuring network...")
             subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:4', f'cd {cwd} && make netcfg', 'C-m'])
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:4', \
+                f'cd {cwd} && make netcfg ONOS_CONFIG_FILE={calculated_args["ONOS_CONFIG_FILE"]}', 'C-m'
+            ])
             time.sleep(5)
 
             # Activate fwd
@@ -119,7 +284,9 @@ def run_setup(args, max_attempts=5):
 
                 # Continue with test execution
                 print("Running tests...")
-                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py execfile(\'test.py\')', 'C-m'])
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
+                    f'py execfile(\'{calculated_args["test_file"]}\')', 'C-m'
+                ])
                 time.sleep(3)
                 subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
                 time.sleep(200)
@@ -143,4 +310,4 @@ def run_setup(args, max_attempts=5):
 
 if __name__ == "__main__":
     args = getCommandLineArgs()
-    run_setup(args, 7)
+    runner(args)

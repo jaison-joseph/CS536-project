@@ -9,6 +9,7 @@
 SCRIPTS = scripts/
 
 export name ?=
+# export ONOS_CONFIG_FILE ?=
 
 .PHONY: mininet mininet-install-iperf3 controller cli netcfg
 
@@ -36,7 +37,10 @@ mininet-install-iperf3:
 		apt-get -y --allow-unauthenticated install iperf3"
 
 mininet:
-	$(SCRIPTS)/mn-custom
+	ifndef MN_STRATUM_TOPO_FILE
+		$(error MN_STRATUM_TOPO_FILE is required. Usage: make netcfg MN_STRATUM_TOPO_FILE=path/to/config.json)
+	endif
+	$(SCRIPTS)/mn-custom MN_STRATUM_TOPO_FILE=$(MN_STRATUM_TOPO_FILE)
 
 controller:
 	ONOS_APPS=gui,proxyarp,drivers.bmv2,lldpprovider,hostprovider,fwd \
@@ -49,7 +53,10 @@ cli:
 # 	$(SCRIPTS)/onos-netcfg cfg/netcfg.json
 
 netcfg:
-	$(SCRIPTS)/onos-netcfg cfg/onos_config.json
+	ifndef ONOS_CONFIG_FILE
+		$(error ONOS_CONFIG_FILE is required. Usage: make netcfg ONOS_CONFIG_FILE=path/to/config.json)
+	endif
+		$(SCRIPTS)/onos-netcfg $(ONOS_CONFIG_FILE)
 
 # Usage: make host name=h1
 host:

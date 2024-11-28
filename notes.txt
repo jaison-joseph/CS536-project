@@ -113,3 +113,31 @@ h1 ITGDec logs/2024-11-26-06:56:31.872282_0_0_2_0.txt -c 1000 decoded/2024-11-26
 
 dirty test for core scripts functionality
 python3 main.py 3 3 nsfnet && python3 main_extension.py
+
+Nov 27 TODO
+
+TODO:
+	update how we store the results:
+		1 folder per simulation
+		folder name: {Topology_type}_{No. of Hosts}_{No. of Switches}_{intensity}
+			within each simulation folder, we have files for runs:
+				run_{run number}
+					and within each run folder, we have the following:
+						routing.txt
+						<date>-<timestamp>_<source node>_<dest node>.txt
+							e.g. 2024-11-22-19:09:45.291079_4_1.txt
+
+	Bring back the logic for generating get-hops.sh and hops.txt, 
+	
+	in the network generator, ensure 1 host/switch
+
+	add the following params to the master script:
+		1. Simulation time
+		2. How often statistics from simulation will be reported
+		3. Traffic intensity
+		4. How many times the simulation should be run (edited) 
+
+	update generated mininet config file to limit queue size to 32 packets
+
+	Fix the issue with incomplete results
+		1. try removing nohup from the ITGDec commands in the test.py file; this is a cheap command, so just run it sequentially?

@@ -17,4 +17,4 @@ docker run --privileged --rm -it \
     --shm-size=1g \
     -v /tmp/mn-stratum:/tmp \
     -v "$MN_STRATUM_MOUNT_DIR":/workdir -w /workdir \
-    $MN_STRATUM_IMG --custom custom-topo.py --topo customtopo --link tc
+    $MN_STRATUM_IMG --custom $MN_STRATUM_TOPO_FILE --topo customtopo --link tc
