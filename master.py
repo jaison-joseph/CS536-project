@@ -115,18 +115,29 @@ def runner(args):
             os.path.join(calculated_args["hops_script_output_file_path"], hopsScriptOutputFileName)
 
         if runNum == 1:
-            main_py_args = \
-                f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
-                f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
-                f'{calculated_args["hops_script_file_path"]}'
 
             subprocess.run([
-            'python3', 'main.py',
-            f'{args.num_nodes}', f'{args.connectivity_type}', f'{calculated_args["topo_file_path"]}',
+                'python3', 'main.py',
+                f'{args.num_nodes}', f'{args.connectivity_type}', f'{calculated_args["topo_file_path"]}',
                 f'{calculated_args["onos_config_file_path"]}', f'{calculated_args["mininet_config_file_path"]}', 
                 f'{calculated_args["hops_script_file_path"]}'
             ])
-        
+
+            time.sleep(1)
+            subprocess.run([
+                'python3', 'main_extension.py', 
+                f'{args.test_duration}', f'{args.output_stats_frequency}', f'{args.traffic_intensity}', 
+                f'{calculated_args["topo_file"]}', f'{calculated_args["test_file_path"]}', 
+                f'{calculated_args["raw_file_path"]}', f'{calculated_args["decoded_file_path"]}'
+            ])
+
+        else:
+            
+            print(f"updating {calculated_args['test_file']} for run number {runNum}")
+            
+            subprocess.run([
+                'sed', '-i', f's/run_{runNum-1}/run_{runNum}/g', f"{calculated_args['test_file']}"
+            ])
         
         run_setup(args, calculated_args, runNum, 7)
         # run_setup_only_print(args, calculated_args)
@@ -145,21 +156,21 @@ def run_setup_only_print(args, calculated_args, run_number, max_attempts = 5):
     # Window 1: Generate network config and test script
     print("Window 1: Creating configuration files...")
 
-    main_py_args = \
-        f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
-        f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
-        f'{calculated_args["hops_script_file_path"]}'
-    main_extension_py_args = \
-        f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
-        f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
-        f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
+    # main_py_args = \
+    #     f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
+    #     f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
+    #     f'{calculated_args["hops_script_file_path"]}'
+    # main_extension_py_args = \
+    #     f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
+    #     f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
+    #     f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
     
     # subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-    ppprint([
-        'tmux', 'send-keys', '-t', 'onos_session:0', 
-        f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
-        'C-m'
-    ])
+    # ppprint([
+    #     'tmux', 'send-keys', '-t', 'onos_session:0', 
+    #     f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
+    #     'C-m'
+    # ])
     # time.sleep(4)
 
     # Window 2: Controller
@@ -243,24 +254,24 @@ def run_setup(args, calculated_args, run_number, max_attempts=5):
 
         # Rest of your window creation and setup code...
         # Window 1: Generate network config and test script
-        print("Window 1: Creating configuration files...")
+        # print("Window 1: Creating configuration files...")
 
         # main_py_args = \
         #     f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
         #     f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
         #     f'{calculated_args["hops_script_file_path"]}'
-        main_extension_py_args = \
-            f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
-            f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
-            f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
+
+        # main_extension_py_args = \
+        #     f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
+        #     f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
+        #     f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
         
         subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-        subprocess.run([
-            'tmux', 'send-keys', '-t', 'onos_session:0', 
-            f"cd {cwd} && python3 main_extension.py {main_extension_py_args}", 
-            'C-m'
-        ])
-        time.sleep(4)
+        # subprocess.run([
+        #     'tmux', 'send-keys', '-t', 'onos_session:0', 
+        #     f"cd {cwd} && python3 main_extension.py {main_extension_py_args}", 
+        #     'C-m'
+        # ])
 
         # Window 2: Controller
         print("Window 2: Starting controller...")
