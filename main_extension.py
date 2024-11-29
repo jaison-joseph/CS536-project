@@ -186,7 +186,7 @@ def getDitgCommands():
     
     res.append("# wait for ITGSend to finish")
     res.append("print('wait for ITGSend to finish')")
-    res.append(f"time.sleep({testDuration * 2})")
+    res.append(f"time.sleep({int(testDuration * 1.3)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -241,7 +241,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     assert all(x == 0 for x in lk.values()), list(lk.values())
     
     res.append("# wait for ITGSend to finish")
-    res.append(f"time.sleep({testDuration * 2})")
+    res.append(f"time.sleep({int(testDuration * 1.3)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -503,7 +503,7 @@ def autoGenerateTest(
     #         if i == j:
     #             continue
     #         addPairToTest(i, j, getTraficMatrixEntry())
-    for i, j in combinations(list(range(numHosts))):
+    for i, j in combinations(list(range(numHosts)), 2):
         addPairToTest(i, j, getTraficMatrixEntry())
 
     outputTestFileName = os.path.join(outputTestFilePath, testFileName)
