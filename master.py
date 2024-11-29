@@ -110,7 +110,7 @@ def runner(args):
             os.path.join(calculated_args["hops_script_file_path"], hopsScriptFileName)
         calculated_args["hops_script_output_file"] = \
             os.path.join(calculated_args["hops_script_output_file_path"], hopsScriptOutputFileName)
-        run_setup(args, calculated_args)
+        run_setup(args, calculated_args, 7)
         # run_setup_only_print(args, calculated_args)
 
 def ppprint(x):
