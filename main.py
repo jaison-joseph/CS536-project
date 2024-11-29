@@ -1,6 +1,5 @@
 import networkx as nx
 import random
-import matplotlib.pyplot as plt
 import os
 import json
 import argparse
@@ -16,6 +15,8 @@ bandwidths = []
 onosConfigFileName = "onos_config.json"
 topoFileName = "topo.json"
 mininetConfigFileName = "custom_topo.py"
+hopsScriptFileName = 'get_hops.sh'
+hopsScriptOutputFileName = 'paths.txt'
 
 def getCommandLineArgs():
     parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
@@ -35,6 +36,9 @@ def getCommandLineArgs():
     
     parser.add_argument('mininet_config_file_path', type=str,
                         help=f'path where the mininet config file {mininetConfigFileName} should be written to')
+
+    parser.add_argument('hops_script_file_path', type=str, 
+                        help=f'where the hops script {hopsScriptFileName} should be outputted to')
     
     parser.add_argument('-v', '--visualize', action='store_true', help='visualize the network topology.')
     
@@ -120,14 +124,19 @@ def create_backbone_network(num_nodes, connectivity_type='nsfnet'):
     
     return G
 
-def draw(G_nsf: nx.classes.graph.Graph):
-    plt.figure(figsize=(12,8))
-    pos = nx.spring_layout(G_nsf)
-    nx.draw(G_nsf, pos, with_labels=True, 
-            node_color=['lightblue' if node.startswith('s') else 'lightgreen' for node in G_nsf.nodes()],
-            node_size=500)
-    plt.title("NSF-like Network Topology")
-    plt.show()
+def generate_get_hops_script(num_switches: int, hopsScriptFilePath: str):
+    fullFileName = os.path.join(hopsScriptFilePath, hopsScriptFileName)
+    with open(fullFileName, 'w+') as f:
+        f.write("#!/bin/bash\n\n")
+        for s in range(num_switches):
+            others = set(range(num_switches))
+            others.remove(s)
+            for o in others:
+                op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/device:s{s}/device:s{o} -u onos:rocks)" >> {hopsScriptOutputFileName}'
+                f.write(op)
+                f.write('\n')
+                # f.write("echo >> paths.txt\n")
+
 
 # Example usage:
 def default_usage():
@@ -149,14 +158,6 @@ def default_usage():
     print(f"Nodes: {G_germany.number_of_nodes()}")
     print(f"Edges: {G_germany.number_of_edges()}")
     
-    # Visualize one of the networks
-    plt.figure(figsize=(12,8))
-    pos = nx.spring_layout(G_nsf)
-    nx.draw(G_nsf, pos, with_labels=True, 
-            node_color=['lightblue' if node.startswith('s') else 'lightgreen' for node in G_nsf.nodes()],
-            node_size=500)
-    plt.title("NSF-like Network Topology")
-    plt.show()
 
 def foo():
     # Create NSF-like network (14 switches)
@@ -243,7 +244,8 @@ def call_mininet_generator(num_nodes: int, G: nx.classes.graph.Graph, mininetCon
 
     outputFileName = os.path.join(mininetConfigFilePath, mininetConfigFileName)
 
-    generateMininetTopologyFile(outputFileName)
+    # note that the logic to limit queue size is in the definition of  generateMininetTopologyFile
+    generateMininetTopologyFile(outputFileName) 
 
 def main():
     # Set up argument parser
@@ -259,6 +261,8 @@ def main():
     # Generate topology and ONOS config
     generateTopologyFile(args.num_nodes, args.topo_file_path)
     generate_ONOS_config(args.num_nodes, args.onos_config_file_path)
+
+    generate_get_hops_script(args.num_nodes, args.hops_script_file_path)
     
     print(f"Generated topology with {args.num_nodes} hosts and {args.num_nodes} switches using {args.connectivity_type} connectivity")
     finalTopoFileName = os.path.join(args.topo_file_path, topoFileName)

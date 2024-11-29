@@ -6,10 +6,13 @@ import json
 from random import uniform
 import os
 import argparse
+from itertools import combinations
 
 # we use numbers in [1, numHosts + 1] to identify each host in the code
 numHosts = 0
 numSwitches = 0
+
+maxQueueSize = 32
 
 # timestamp_number-of-hosts_number-of-switches
 outputFilePrefix = f"{str(datetime.datetime.now()).replace(' ', '-')}" + \
@@ -256,8 +259,11 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
         decodedFileName = rawFileName = f"{outputFilePrefix}_{c}_{s}"
         fullRawFileName = os.path.join(rawFilePath, rawFileName)
         fullDecodedFileName = os.path.join(decodedFilePath, decodedFileName)
+        # res.append(
+        #     f"h{c}.cmd('nohup ITGDec {fullRawFileName} -c {outputStatsFrequency} {fullDecodedFileName} 2>&1 &')"
+        # )
         res.append(
-            f"h{c}.cmd('nohup ITGDec {fullRawFileName} -c {outputStatsFrequency} {fullDecodedFileName} 2>&1 &')"
+            f"h{c}.cmd('ITGDec {fullRawFileName} -c {outputStatsFrequency} {fullDecodedFileName}')"
         )
     res.append("")
 
@@ -431,13 +437,36 @@ def generateMininetTopologyFile(outputFileName: str):
     [
         f"h{i} = self.addHost('h{i}')" for i in range(numHosts)
     ] + \
-    [''] + \
-    [
-        f"self.addLink({p[0]}, {p[1]}, bw={p[2]})" \
-        if len(p) == 3 else \
-        f"self.addLink({p[0]}, {p[1]})" \
-        for p in links
-    ]
+    ['']
+    # [
+    #     f"self.addLink({p[0]}, {p[1]}, bw={p[2]})" \
+    #     if len(p) == 3 else \
+    #     f"self.addLink({p[0]}, {p[1]})" \
+    #     for p in links
+    # ]
+
+    addLinkLines = []
+    for p in links:
+        if len(p) == 3:
+            if p[0][0] == 'h' or  p[1][0] == 'h':
+                addLinkLines.append(
+                    f"self.addLink({p[0]}, {p[1]}, bw={p[2]})"
+                )
+            else:
+                addLinkLines.append(
+                    f"self.addLink({p[0]}, {p[1]}, bw={p[2]}, max_queue_size={maxQueueSize})"
+                )
+        else:
+            if p[0][0] == 'h' or  p[1][0] == 'h':
+                addLinkLines.append(
+                    f"self.addLink({p[0]}, {p[1]})"
+                )
+            else:
+                addLinkLines.append(
+                    f"self.addLink({p[0]}, {p[1]}, max_queue_size={maxQueueSize})"
+                )
+
+    new_content += addLinkLines
 
     indentLevel = 2
 
@@ -469,11 +498,13 @@ def autoGenerateTest(
     for n1, n2, bw in edges:
         addLink(n1[0], int(n1[1:]), n2[0], int(n2[1:]), bw)
 
-    for i in range(numHosts):
-        for j in range(numHosts):
-            if i == j:
-                continue
-            addPairToTest(i, j, getTraficMatrixEntry())
+    # for i in range(numHosts):
+    #     for j in range(numHosts):
+    #         if i == j:
+    #             continue
+    #         addPairToTest(i, j, getTraficMatrixEntry())
+    for i, j in combinations(list(range(numHosts))):
+        addPairToTest(i, j, getTraficMatrixEntry())
 
     outputTestFileName = os.path.join(outputTestFilePath, testFileName)
     with open(outputTestFileName, 'w+') as f:

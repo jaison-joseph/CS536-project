@@ -3,8 +3,9 @@ import time
 import os
 import argparse
 
-from main import mininetConfigFileName, topoFileName, onosConfigFileName
+from main import mininetConfigFileName, topoFileName, onosConfigFileName, hopsScriptFileName, hopsScriptOutputFileName
 from main_extension import testFileName
+from get_port_matrix import portMatrixFileName
 
 def getCommandLineArgs():
     parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
@@ -89,9 +90,12 @@ def runner(args):
             'topo_file_path': simulationDir,
             'onos_config_file_path': simulationDir,
             'mininet_config_file_path': simulationDir,
+            'hops_script_file_path': simulationDir,
+            'hops_script_output_file_path': simulationDir,
+            'port_matrix_file_path': simulationDir,
             'test_file_path': simulationDir,
             'raw_file_path': rawDir,
-            'decoded_file_path': decodedDir,
+            'decoded_file_path': decodedDir
         }
         # mn_stratum is mininet
         calculated_args["mn_stratum_topo_file"] = \
@@ -102,8 +106,12 @@ def runner(args):
             os.path.join(calculated_args["topo_file_path"], topoFileName)
         calculated_args["test_file"] = \
             os.path.join(calculated_args["test_file_path"], testFileName)
-        # run_setup(args, calculated_args)
-        run_setup_only_print(args, calculated_args)
+        calculated_args["hops_script"] = \
+            os.path.join(calculated_args["hops_script_file_path"], hopsScriptFileName)
+        calculated_args["hops_script_output_file"] = \
+            os.path.join(calculated_args["hops_script_output_file_path"], hopsScriptOutputFileName)
+        run_setup(args, calculated_args)
+        # run_setup_only_print(args, calculated_args)
 
 def ppprint(x):
     print(" ".join(x))
@@ -121,7 +129,8 @@ def run_setup_only_print(args, calculated_args, max_attempts = 5):
 
     main_py_args = \
         f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
-        f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]}'
+        f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
+        f'{calculated_args["hops_script_file_path"]}'
     main_extension_py_args = \
         f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
         f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
@@ -208,97 +217,135 @@ def run_setup(args, calculated_args, max_attempts=5):
         # Clean up before each attempt (including first one to ensure clean state)
         cleanup()
 
-        try:
-            # Create new tmux session
-            print("Create new tmux session")
-            subprocess.run(['tmux', 'new-session', '-d', '-s', 'onos_session'])
-            cwd = os.getcwd()
+        # try:
+        # Create new tmux session
+        print("Create new tmux session")
+        subprocess.run(['tmux', 'new-session', '-d', '-s', 'onos_session'])
+        cwd = os.getcwd()
 
-            # Rest of your window creation and setup code...
-            # Window 1: Generate network config and test script
-            print("Window 1: Creating configuration files...")
+        # Rest of your window creation and setup code...
+        # Window 1: Generate network config and test script
+        print("Window 1: Creating configuration files...")
 
-            main_py_args = \
-                f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
-                f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]}'
-            main_extension_py_args = \
-                f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
-                f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
-                f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
+        main_py_args = \
+            f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
+            f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
+            f'{calculated_args["hops_script_file_path"]}'
+        main_extension_py_args = \
+            f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
+            f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
+            f'{calculated_args["raw_file_path"]} {calculated_args["decoded_file_path"]}'
+        
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run([
+            'tmux', 'send-keys', '-t', 'onos_session:0', 
+            f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
+            'C-m'
+        ])
+        time.sleep(4)
+
+        # Window 2: Controller
+        print("Window 2: Starting controller...")
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:1', f'cd {cwd} && make controller', 'C-m'])
+        time.sleep(55)
+
+        # Window 3: Mininet
+        print("Window 3: Starting Mininet...")
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
+            f'cd {cwd} && make mininet MN_STRATUM_TOPO_FILE={calculated_args["mn_stratum_topo_file"]}', 'C-m'
+        ])
+        time.sleep(10)
+
+        # Window 4: ONOS CLI
+        print("Window 4: Starting ONOS CLI...")
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', f'cd {cwd} && make cli', 'C-m'])
+        time.sleep(5)
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 'rocks', 'C-m'])
+        time.sleep(5)
+
+        # Window 5: NetCFG
+        print("Window 5: Configuring network...")
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:4', \
+            f'cd {cwd} && make netcfg ONOS_CONFIG_FILE={calculated_args["onos_config_file"]}', 'C-m'
+        ])
+        time.sleep(5)
+
+        # Activate fwd
+        print("Activating forwarding...")
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 'app activate fwd', 'C-m'])
+        time.sleep(2)
+
+        # Run pingall twice
+        print("Running first pingall...")
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+        time.sleep(10)
+        print("Running second pingall...")
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+        time.sleep(10)
+
+        # Check if mininet CLI is ready
+        if check_mininet_cli_ready():
+            print("Mininet CLI is ready!")
+            success = True
+
+            # Window 6: Handle get_hops script
+            print("Window 6: Handle get_hops script")
+            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
             
-            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run([
-                'tmux', 'send-keys', '-t', 'onos_session:0', 
-                f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
-                'C-m'
-            ])
-            time.sleep(4)
-
-            # Window 2: Controller
-            print("Window 2: Starting controller...")
-            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:1', f'cd {cwd} && make controller', 'C-m'])
-            time.sleep(55)
-
-            # Window 3: Mininet
-            print("Window 3: Starting Mininet...")
-            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
-                f'cd {cwd} && make mininet MN_STRATUM_TOPO_FILE={calculated_args["mn_stratum_topo_file"]}', 'C-m'
-            ])
-            time.sleep(10)
-
-            # Window 4: ONOS CLI
-            print("Window 4: Starting ONOS CLI...")
-            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', f'cd {cwd} && make cli', 'C-m'])
-            time.sleep(5)
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 'rocks', 'C-m'])
-            time.sleep(5)
-
-            # Window 5: NetCFG
-            print("Window 5: Configuring network...")
-            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:4', \
-                f'cd {cwd} && make netcfg ONOS_CONFIG_FILE={calculated_args["ONOS_CONFIG_FILE"]}', 'C-m'
-            ])
-            time.sleep(5)
-
-            # Activate fwd
-            print("Activating forwarding...")
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 'app activate fwd', 'C-m'])
+            # Make the script executable
+            print("Make the get_hops.sh executable")
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                            'chmod', '+x', calculated_args["hops_script"], 'C-m'])
+            
+            # Copy and execute get_hops script
+            print("Copy and execute get_hops script")
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                        f'docker cp {calculated_args["hops_script"]} onos:/root/onos/get_hops.sh', 'C-m'])
+            time.sleep(1)
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                        'docker exec onos chmod +x /root/onos/get_hops.sh', 'C-m'])
+            time.sleep(1)
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                        'docker exec onos /root/onos/get_hops.sh', 'C-m'])
+            time.sleep(2)
+            
+            # Copy results back
+            print("Copy results back")
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                    f'docker cp onos:/root/onos/paths.txt {calculated_args["hops_script_output_file"]}', 'C-m'])
             time.sleep(2)
 
-            # Run pingall twice
-            print("Running first pingall...")
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
-            time.sleep(10)
-            print("Running second pingall...")
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
-            time.sleep(10)
+            # get the port matrix from the output of the get_hops script
+            print("get the port matrix from the output of the get_hops script")
 
-            # Check if mininet CLI is ready
-            if check_mininet_cli_ready():
-                print("Mininet CLI is ready!")
-                success = True
+            get_port_matrix_args = f'{calculated_args["topo_file"]} ' + \
+                    f'{calculated_args["hops_script_output_file"]} {calculated_args["port_matrix_file_path"]}'
+            
+            subprocess.run([
+                'tmux', 'send-keys', '-t', 'onos_session:0',
+                f'python3 get_port_matrix.py {get_port_matrix_args}', 'C-m'])
 
-                # Continue with test execution
-                print("Running tests...")
-                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
-                    f'py execfile(\'{calculated_args["test_file"]}\')', 'C-m'
-                ])
-                time.sleep(3)
-                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
-                time.sleep(200)
-            else:
-                print("Mininet CLI not ready, will retry...")
-                continue
+            # Continue with test execution
+            print("Running tests...")
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
+                f'py execfile(\'{calculated_args["test_file"]}\')', 'C-m'
+            ])
+            time.sleep(1)
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
+            time.sleep(args.test_duration * 1.5)
+        else:
+            print("Mininet CLI not ready, will retry...")
+            continue
 
-        except Exception as e:
-            print(f"Error during setup: {e}")
-            if attempt < max_attempts:
-                print("Will retry after cleanup...")
-                continue
+        # except Exception as e:
+        #     print(f"Error during setup: {e}")
+        #     if attempt < max_attempts:
+        #         print("Will retry after cleanup...")
+        #         continue
 
     if not success:
         print(f"Failed to set up network after {max_attempts} attempts")

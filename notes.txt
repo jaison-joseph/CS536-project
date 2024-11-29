@@ -141,3 +141,7 @@ TODO:
 
 	Fix the issue with incomplete results
 		1. try removing nohup from the ITGDec commands in the test.py file; this is a cheap command, so just run it sequentially?
+
+	python3 master.py 4 nsfnet 1 60 1000 11
+
+	tmux attach-session -t onos_session
