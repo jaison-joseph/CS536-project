@@ -77,11 +77,14 @@ def runner(args):
         os.makedirs(simulationDir)
     for runNum in range(1, args.num_runs + 1):
         print('-----' * 15)
-        simulationDir = f"simulations/{args.connectivity_type}_{args.num_nodes}_{args.traffic_intensity}/run_{runNum}/"
+        simulationDir = f"simulations/{args.connectivity_type}_{args.num_nodes}_{args.traffic_intensity}/"
+        runDir = f"simulations/{args.connectivity_type}_{args.num_nodes}_{args.traffic_intensity}/run_{runNum}/"
         if not os.path.isdir(simulationDir):
             os.mkdir(simulationDir)
-        rawDir = os.path.join(simulationDir, "raw_data")
-        decodedDir = os.path.join(simulationDir, "decoded_data")
+        if not os.path.isdir(runDir):
+            os.mkdir(runDir)
+        rawDir = os.path.join(runDir, "raw_data")
+        decodedDir = os.path.join(runDir, "decoded_data")
         if not os.path.isdir(rawDir):
             os.mkdir(rawDir)
         if not os.path.isdir(decodedDir):
@@ -110,13 +113,28 @@ def runner(args):
             os.path.join(calculated_args["hops_script_file_path"], hopsScriptFileName)
         calculated_args["hops_script_output_file"] = \
             os.path.join(calculated_args["hops_script_output_file_path"], hopsScriptOutputFileName)
-        run_setup(args, calculated_args, 7)
+
+        if runNum == 1:
+            main_py_args = \
+                f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
+                f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
+                f'{calculated_args["hops_script_file_path"]}'
+
+            subprocess.run([
+            'python3', 'main.py',
+            f'{args.num_nodes}', f'{args.connectivity_type}', f'{calculated_args["topo_file_path"]}',
+                f'{calculated_args["onos_config_file_path"]}', f'{calculated_args["mininet_config_file_path"]}', 
+                f'{calculated_args["hops_script_file_path"]}'
+            ])
+        
+        
+        run_setup(args, calculated_args, runNum, 7)
         # run_setup_only_print(args, calculated_args)
 
 def ppprint(x):
     print(" ".join(x))
 
-def run_setup_only_print(args, calculated_args, max_attempts = 5):
+def run_setup_only_print(args, calculated_args, run_number, max_attempts = 5):
     
     # Create new tmux session
     print("Create new tmux session")
@@ -206,7 +224,7 @@ def run_setup_only_print(args, calculated_args, max_attempts = 5):
 
 
 
-def run_setup(args, calculated_args, max_attempts=5):
+def run_setup(args, calculated_args, run_number, max_attempts=5):
     attempt = 0
     success = False
 
@@ -227,10 +245,10 @@ def run_setup(args, calculated_args, max_attempts=5):
         # Window 1: Generate network config and test script
         print("Window 1: Creating configuration files...")
 
-        main_py_args = \
-            f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
-            f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
-            f'{calculated_args["hops_script_file_path"]}'
+        # main_py_args = \
+        #     f'{args.num_nodes} {args.connectivity_type} {calculated_args["topo_file_path"]} ' + \
+        #     f'{calculated_args["onos_config_file_path"]} {calculated_args["mininet_config_file_path"]} ' + \
+        #     f'{calculated_args["hops_script_file_path"]}'
         main_extension_py_args = \
             f'{args.test_duration} {args.output_stats_frequency} {args.traffic_intensity} ' + \
             f'{calculated_args["topo_file"]} {calculated_args["test_file_path"]} ' + \
@@ -239,7 +257,7 @@ def run_setup(args, calculated_args, max_attempts=5):
         subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
         subprocess.run([
             'tmux', 'send-keys', '-t', 'onos_session:0', 
-            f"cd {cwd} && python3 main.py {main_py_args} && python3 main_extension.py {main_extension_py_args}", 
+            f"cd {cwd} && python3 main_extension.py {main_extension_py_args}", 
             'C-m'
         ])
         time.sleep(4)
@@ -292,42 +310,44 @@ def run_setup(args, calculated_args, max_attempts=5):
             print("Mininet CLI is ready!")
             success = True
 
-            # Window 6: Handle get_hops script
-            print("Window 6: Handle get_hops script")
-            subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
-            
-            # Make the script executable
-            print("Make the get_hops.sh executable")
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
-                            'chmod', '+x', calculated_args["hops_script"], 'C-m'])
-            
-            # Copy and execute get_hops script
-            print("Copy and execute get_hops script")
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
-                        f'docker cp {calculated_args["hops_script"]} onos:/root/onos/get_hops.sh', 'C-m'])
-            time.sleep(1)
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
-                        'docker exec onos chmod +x /root/onos/get_hops.sh', 'C-m'])
-            time.sleep(1)
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
-                        'docker exec onos /root/onos/get_hops.sh', 'C-m'])
-            time.sleep(2)
-            
-            # Copy results back
-            print("Copy results back")
-            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
-                    f'docker cp onos:/root/onos/paths.txt {calculated_args["hops_script_output_file"]}', 'C-m'])
-            time.sleep(2)
+            if run_number == 1:
 
-            # get the port matrix from the output of the get_hops script
-            print("get the port matrix from the output of the get_hops script")
+                # Window 6: Handle get_hops script
+                print("Window 6: Handle get_hops script")
+                subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+                
+                # Make the script executable
+                print("Make the get_hops.sh executable")
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                                'chmod', '+x', calculated_args["hops_script"], 'C-m'])
+                
+                # Copy and execute get_hops script
+                print("Copy and execute get_hops script")
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                            f'docker cp {calculated_args["hops_script"]} onos:/root/onos/get_hops.sh', 'C-m'])
+                time.sleep(1)
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                            'docker exec onos chmod +x /root/onos/get_hops.sh', 'C-m'])
+                time.sleep(1)
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                            'docker exec onos /root/onos/get_hops.sh', 'C-m'])
+                time.sleep(2)
+                
+                # Copy results back
+                print("Copy results back")
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:5', 
+                        f'docker cp onos:/root/onos/paths.txt {calculated_args["hops_script_output_file"]}', 'C-m'])
+                time.sleep(2)
 
-            get_port_matrix_args = f'{calculated_args["topo_file"]} ' + \
-                    f'{calculated_args["hops_script_output_file"]} {calculated_args["port_matrix_file_path"]}'
-            
-            subprocess.run([
-                'tmux', 'send-keys', '-t', 'onos_session:0',
-                f'python3 get_port_matrix.py {get_port_matrix_args}', 'C-m'])
+                # get the port matrix from the output of the get_hops script
+                print("get the port matrix from the output of the get_hops script")
+
+                get_port_matrix_args = f'{calculated_args["topo_file"]} ' + \
+                        f'{calculated_args["hops_script_output_file"]} {calculated_args["port_matrix_file_path"]}'
+                
+                subprocess.run([
+                    'tmux', 'send-keys', '-t', 'onos_session:0',
+                    f'python3 get_port_matrix.py {get_port_matrix_args}', 'C-m'])
 
             # Continue with test execution
             print("Running tests...")
