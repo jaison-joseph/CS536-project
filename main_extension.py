@@ -498,13 +498,13 @@ def autoGenerateTest(
     for n1, n2, bw in edges:
         addLink(n1[0], int(n1[1:]), n2[0], int(n2[1:]), bw)
 
-    # for i in range(numHosts):
-    #     for j in range(numHosts):
-    #         if i == j:
-    #             continue
-    #         addPairToTest(i, j, getTraficMatrixEntry())
-    for i, j in combinations(list(range(numHosts)), 2):
-        addPairToTest(i, j, getTraficMatrixEntry())
+    for i in range(numHosts):
+        for j in range(numHosts):
+            if i == j:
+                continue
+            addPairToTest(i, j, getTraficMatrixEntry())
+    # for i, j in combinations(list(range(numHosts)), 2):
+    #     addPairToTest(i, j, getTraficMatrixEntry())
 
     outputTestFileName = os.path.join(outputTestFilePath, testFileName)
     with open(outputTestFileName, 'w+') as f:

@@ -336,7 +336,7 @@ def run_setup(args, calculated_args, max_attempts=5):
             ])
             time.sleep(1)
             subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
-            time.sleep(args.test_duration * 1.5)
+            time.sleep(args.test_duration * 1.7)
         else:
             print("Mininet CLI not ready, will retry...")
             continue
@@ -352,7 +352,7 @@ def run_setup(args, calculated_args, max_attempts=5):
         return False
 
     # Attach to the tmux session
-    subprocess.run(['tmux', 'attach-session', '-t', 'onos_session'])
+    # subprocess.run(['tmux', 'attach-session', '-t', 'onos_session'])
     return True
 
 if __name__ == "__main__":
