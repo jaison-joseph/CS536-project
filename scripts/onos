@@ -7,5 +7,8 @@ docker run -it --rm \
   --name $ONOS_DOCKER_NAME \
   -e ONOS_APPS \
   --network host \
+  --cpus=1.0 \
+  --memory=4g \
+  --ulimit nofile=65536:65536 \
   -v /tmp/onos:/root/onos/apache-karaf-4.2.8/data/tmp \
   $ONOS_IMG "$@"

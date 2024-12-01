@@ -43,7 +43,7 @@ endif
 	$(SCRIPTS)/mn-custom MN_STRATUM_TOPO_FILE=$(MN_STRATUM_TOPO_FILE)
 
 controller:
-	ONOS_APPS=gui,proxyarp,drivers.bmv2,lldpprovider,hostprovider,fwd \
+	ONOS_APPS=gui,proxyarp,drivers.bmv2,lldpprovider,hostprovider,fwd,openflow \
 	$(SCRIPTS)/onos
 
 cli:

@@ -145,3 +145,49 @@ TODO:
 	python3 master.py 3 nsfnet 1 30 1000 12
 
 	tmux attach-session -t onos_session
+
+	docker stats mn-stratum onos
+
+	logs on debugging:
+	- docker containers are not resource xonstrained
+		- monitored while running pingall
+
+	- removed bandwidths on links, didn't help
+
+make controller
+
+export MN_STRATUM_TOPO_FILE=simulations/nsfnet_12_12/custom_topo_original.py
+scripts/mn-custom MN_STRATUM_TOPO_FILE=$MN_STRATUM_TOPO_FILE
+
+scripts/onos-cli
+
+export ONOS_CONFIG_FILE=simulations/nsfnet_12_12/onos_config.json
+scripts/onos-netcfg $ONOS_CONFIG_FILE
+
+app activate org.onosproject.openflow
+
+ovs switch attempt:
+
+app activate org.onosproject.openflow
+
+start onos
+activate apps
+launch mininet
+
+py execfile('simulations/nsfnet_12_12/test.py')
+py run_tests(net)
+
+
+TODO Dec 1
+	- increase wait for itgsend to 2x test time
+	- add wait time for itgdec 
+
+		total wait time: 5 + (2 * testDuration) + 10 + (2 * # of nodes)
+			itgrecv start + itgsend + itgrecv kill + itgdec
+		# wait for servers to start
+        time.sleep(2)
+		# wait for ITGSend to finish
+        time.sleep(60)
+		# wait for killing of ITGRecv processes
+        time.sleep(10)
+        time.sleep(20)
