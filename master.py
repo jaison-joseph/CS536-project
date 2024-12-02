@@ -141,7 +141,8 @@ def runner(args):
                 'sed', '-i', f's/run_{runNum-1}/run_{runNum}/g', f"{calculated_args['test_file']}"
             ])
         
-        run_setup(args, calculated_args, runNum, 7)
+        run_setup_openflow_switches(args, calculated_args, runNum, 7)
+        # run_setup(args, calculated_args, runNum, 7)
         # run_setup_only_print(args, calculated_args)
 
 def ppprint(x):
@@ -209,7 +210,7 @@ def run_setup_only_print(args, calculated_args, run_number, max_attempts = 5):
     ppprint("Activating forwarding...")
     ppprint(['tmux', 'send-keys', '-t', 'onos_session:3', 'app activate fwd', 'C-m'])
     # time.sleep(2)
-
+    
     # Run pingall twice
     ppprint("Running first pingall...")
     ppprint(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
@@ -235,7 +236,123 @@ def run_setup_only_print(args, calculated_args, run_number, max_attempts = 5):
         ppprint("Mininet CLI not ready, will retry...")
         # continue
 
+def run_setup_openflow_switches(args, calculated_args, run_number, max_attempts=5):
+    attempt = 0
+    success = False
 
+    while attempt < max_attempts and not success:
+        attempt += 1
+        print(f"\nAttempt {attempt} of {max_attempts}")
+
+        # Clean up before each attempt (including first one to ensure clean state)
+        cleanup()
+
+        # try:
+        # Create new tmux session
+        print("Create new tmux session")
+        subprocess.run(['tmux', 'new-session', '-d', '-s', 'onos_session'])
+        cwd = os.getcwd()
+        
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        # subprocess.run([
+        #     'tmux', 'send-keys', '-t', 'onos_session:0', 
+        #     f"cd {cwd} && python3 main_extension.py {main_extension_py_args}", 
+        #     'C-m'
+        # ])
+
+        # Window 2: Controller
+        print("Window 2: Starting controller...")
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:1', f'cd {cwd} && make controller', 'C-m'])
+        time.sleep(55)
+
+        # Window 3: Mininet
+        print("Window 3: Starting Mininet...")
+        subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
+            f'cd {cwd} && make mininet MN_STRATUM_TOPO_FILE={calculated_args["mn_stratum_topo_file"]}', 'C-m'
+        ])
+        time.sleep(args.num_nodes * 2)
+
+        # Run pingall twice
+        print("Running first pingall...")
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+        time.sleep(args.num_nodes * 3)
+        print("Running second pingall...")
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+        time.sleep(args.num_nodes * 3)
+
+        # Check if mininet CLI is ready
+        if check_mininet_cli_ready():
+            print("Mininet CLI is ready!")
+            success = True
+
+            if run_number == 1:
+
+                # Window 6: Handle get_hops script
+                print("Window 4: Handle get_hops script")
+                subprocess.run(['tmux', 'new-window', '-t', 'onos_session'])
+                
+                # Make the script executable
+                print("Make the get_hops.sh executable")
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
+                                'chmod', '+x', calculated_args["hops_script"], 'C-m'])
+                
+                # Copy and execute get_hops script
+                print("Copy and execute get_hops script")
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
+                            f'docker cp {calculated_args["hops_script"]} onos:/root/onos/get_hops.sh', 'C-m'])
+                time.sleep(1)
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
+                            'docker exec onos chmod +x /root/onos/get_hops.sh', 'C-m'])
+                time.sleep(1)
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
+                            'docker exec onos /root/onos/get_hops.sh', 'C-m'])
+                time.sleep(args.num_nodes)
+                
+                # Copy results back
+                print("Copy results back")
+                subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
+                        f'docker cp onos:/root/onos/paths.txt {calculated_args["hops_script_output_file"]}', 'C-m'])
+                time.sleep(2)
+
+                # get the port matrix from the output of the get_hops script
+                print("get the port matrix from the output of the get_hops script")
+
+                get_port_matrix_args = f'{calculated_args["topo_file"]} ' + \
+                        f'{calculated_args["hops_script_output_file"]} {calculated_args["port_matrix_file_path"]}'
+                
+                subprocess.run([
+                    'tmux', 'send-keys', '-t', 'onos_session:0',
+                    f'python3 get_port_matrix.py {get_port_matrix_args}', 'C-m'])
+
+            # Continue with test execution
+            print("Running tests...")
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', \
+                f'py execfile(\'{calculated_args["test_file"]}\')', 'C-m'
+            ])
+            time.sleep(1)
+            subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'py run_tests(net)', 'C-m'])
+            # itgrecv start + itgsend + itgrecv kill + itgdec
+            testScriptRunDuration = 5 + (args.test_duration * 3) + 10 + (args.num_nodes * 3)
+            time.sleep(testScriptRunDuration + 10)
+        else:
+            print("Mininet CLI not ready, will retry...")
+            continue
+
+        # except Exception as e:
+        #     print(f"Error during setup: {e}")
+        #     if attempt < max_attempts:
+        #         print("Will retry after cleanup...")
+        #         continue
+
+    if not success:
+        print(f"Failed to set up network after {max_attempts} attempts")
+        return False
+
+    # Attach to the tmux session
+    # subprocess.run(['tmux', 'attach-session', '-t', 'onos_session'])
+    return True
 
 def run_setup(args, calculated_args, run_number, max_attempts=5):
     attempt = 0

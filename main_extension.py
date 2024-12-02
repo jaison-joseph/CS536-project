@@ -168,7 +168,7 @@ def getDitgCommands():
 
     res.append("# wait for servers to start")
     res.append("print('wait for servers to start')")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(5)")
     res.append("")
 
     res.append("# run iperf clients")
@@ -186,7 +186,7 @@ def getDitgCommands():
     
     res.append("# wait for ITGSend to finish")
     res.append("print('wait for ITGSend to finish')")
-    res.append(f"time.sleep({int(testDuration * 1.3)})")
+    res.append(f"time.sleep({int(testDuration * 2)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -197,7 +197,7 @@ def getDitgCommands():
 
     res.append("# wait for killing of ITGRecv processes")
     res.append("print('wait for killing of ITGRecv processes')")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(10)")
     res.append("")
 
     res.append("# decode d-itg logs to 10-second interval stats")
@@ -207,6 +207,9 @@ def getDitgCommands():
             f"h{c}.cmd('nohup ITGDec logs/{outputFilePrefix}_{c}_{s}.txt -c 1000 decoded/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')"
         )
     res.append("")
+
+    #wait for itgdec to finish
+    res.append(f"time.sleep({numHosts * 2})")
 
     return res
 
@@ -223,7 +226,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     res.append("")
 
     res.append("# wait for servers to start")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(5)")
     res.append("")
 
     res.append("# run iperf clients")
@@ -241,7 +244,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     assert all(x == 0 for x in lk.values()), list(lk.values())
     
     res.append("# wait for ITGSend to finish")
-    res.append(f"time.sleep({int(testDuration * 1.3)})")
+    res.append(f"time.sleep({int(testDuration * 3)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -250,7 +253,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     res.append("")
 
     res.append("# wait for killing of ITGRecv processes")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(10)")
     res.append("")
 
     res.append("# decode d-itg logs to 10-second interval stats")
@@ -266,6 +269,10 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
             f"h{c}.cmd('ITGDec {fullRawFileName} -c {outputStatsFrequency} {fullDecodedFileName}')"
         )
     res.append("")
+
+    #wait for itgdec to finish
+    # res.append("# wait for itgdec to finish")
+    # res.append(f"time.sleep({numHosts * 2})")
 
     return res
 
@@ -425,13 +432,19 @@ def addLink(t1: str, x1: int, t2: str, x2: int, bw: int = 0):
     pair = (p1, p2) if bw == 0 else (p1, p2, bw)
     links.add(pair)
 
+def generate_openflow_id(width, number=1):
+    # Convert to hex and ensure total width including leading zeros
+    hex_format = f"{{:0{width}x}}"
+    hex_num = hex_format.format(number)
+    return f"of:{hex_num}"
+
 def generateMininetTopologyFile(outputFileName: str):
     assert numHosts > 0, "please make a call to setNumberOfHosts first"
     assert numSwitches > 0, "please make a call to setNumberOfSwitches first"
     lines = open('custom-topo.py', 'r').readlines()
 
     new_content = [
-        f"s{i} = self.addSwitch('s{i}')" for i in range(numSwitches)
+        f"s{i} = self.addSwitch('s{i}', dpid='{generate_openflow_id(16, i+1)[3:]}')" for i in range(numSwitches)
     ] + \
     [''] + \
     [

@@ -132,7 +132,9 @@ def generate_get_hops_script(num_switches: int, hopsScriptFilePath: str):
             others = set(range(num_switches))
             others.remove(s)
             for o in others:
-                op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/device:s{s}/device:s{o} -u onos:rocks)" >> {hopsScriptOutputFileName}'
+                # curl -X GET http://localhost:8181/onos/v1/paths/of:0000000000000001/of:000000000000000a -u onos:rocks
+                # op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/device:s{s}/device:s{o} -u onos:rocks)" >> {hopsScriptOutputFileName}'
+                op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/{generate_openflow_id(16, s+1)}/{generate_openflow_id(16, o+1)} -u onos:rocks)" >> {hopsScriptOutputFileName}'
                 f.write(op)
                 f.write('\n')
                 # f.write("echo >> paths.txt\n")
