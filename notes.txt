@@ -156,7 +156,7 @@ TODO:
 
 make controller
 
-export MN_STRATUM_TOPO_FILE=simulations/nsfnet_12_12/custom_topo_original.py
+export MN_STRATUM_TOPO_FILE=simulations/nsfnet_15_11/custom_topo.py
 scripts/mn-custom MN_STRATUM_TOPO_FILE=$MN_STRATUM_TOPO_FILE
 
 scripts/onos-cli
@@ -174,7 +174,7 @@ start onos
 activate apps
 launch mininet
 
-py execfile('simulations/nsfnet_12_12/test.py')
+py execfile('simulations/nsfnet_15_11/test.py')
 py run_tests(net)
 
 
@@ -191,3 +191,7 @@ TODO Dec 1
 		# wait for killing of ITGRecv processes
         time.sleep(10)
         time.sleep(20)
+
+python3 master.py 10 nsfnet 2 90 1000 9 11
+python3 master.py 3 nsfnet 1 30 1000 12
+python3 get_graph_attr.py simulations/nsfnet_7_14_14/lambda_14/topo.json simulations/nsfnet_7_14_14/lambda_14/sorted_links.txt simulations/nsfnet_7_14_14/lambda_14

@@ -387,7 +387,7 @@ def setTestDuration(x: int):
     testDuration = x
 
 def setTrafficIntensity(x: int):
-    assert 11 <= x <= 16
+    # assert 11 <= x <= 16
     global TrafficIntensity
     TrafficIntensity = x
 
@@ -444,7 +444,7 @@ def generateMininetTopologyFile(outputFileName: str):
     lines = open('custom-topo.py', 'r').readlines()
 
     new_content = [
-        f"s{i} = self.addSwitch('s{i}', dpid='{generate_openflow_id(16, i+1)[3:]}')" for i in range(numSwitches)
+        f"s{i} = self.addSwitch('s{i}', dpid='{generate_openflow_id(16, i+1)[3:]}', cls=OVSSwitch)" for i in range(numSwitches)
     ] + \
     [''] + \
     [
@@ -459,7 +459,17 @@ def generateMininetTopologyFile(outputFileName: str):
     # ]
 
     addLinkLines = []
-    for p in links:
+    sortedLinks = list(links)
+    # we want to assign links from hosts to their switch first
+    # p[0][0] and p[1][0] are one of ['h', 's']
+    # considering all combinations, we have 4 values; and when sorted, we have:
+    # ['hh', 'hs', 'sh', 'ss']
+    # in this order, note that 'hh' never occurs because we don't connect 2 hosts
+    # 'hs' / 'sh': we want this first
+    # 'ss': what we want after all the 'hs', 'sh'
+
+    sortedLinks.sort(key = lambda x: f'{x[0][0]}{x[1][0]}')
+    for p in sortedLinks:
         if len(p) == 3:
             if p[0][0] == 'h' or  p[1][0] == 'h':
                 addLinkLines.append(
@@ -493,7 +503,8 @@ def generateMininetTopologyFile(outputFileName: str):
         lines, new_content, 
         start_marker, end_marker, 
         outputFileName
-    )    
+    )
+    return sortedLinks    
 
 def autoGenerateTest(
     testDuration: int, trafficIntensity: int, networkConfigFileName: str, 

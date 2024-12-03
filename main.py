@@ -16,7 +16,7 @@ onosConfigFileName = "onos_config.json"
 topoFileName = "topo.json"
 mininetConfigFileName = "custom_topo.py"
 hopsScriptFileName = 'get_hops.sh'
-hopsScriptOutputFileName = 'paths.txt'
+sortedLinksFileName = 'sorted_links.txt'
 
 def getCommandLineArgs():
     parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
@@ -37,8 +37,9 @@ def getCommandLineArgs():
     parser.add_argument('mininet_config_file_path', type=str,
                         help=f'path where the mininet config file {mininetConfigFileName} should be written to')
 
-    parser.add_argument('hops_script_file_path', type=str, 
-                        help=f'where the hops script {hopsScriptFileName} should be outputted to')
+    # not needed since we don't generate this script anymore
+    # parser.add_argument('hops_script_file_path', type=str, 
+    #                     help=f'where the hops script {hopsScriptFileName} should be outputted to')
     
     parser.add_argument('-v', '--visualize', action='store_true', help='visualize the network topology.')
     
@@ -123,21 +124,6 @@ def create_backbone_network(num_nodes, connectivity_type='nsfnet'):
         G.add_edge(host, switch)
     
     return G
-
-def generate_get_hops_script(num_switches: int, hopsScriptFilePath: str):
-    fullFileName = os.path.join(hopsScriptFilePath, hopsScriptFileName)
-    with open(fullFileName, 'w+') as f:
-        f.write("#!/bin/bash\n\n")
-        for s in range(num_switches):
-            others = set(range(num_switches))
-            others.remove(s)
-            for o in others:
-                # curl -X GET http://localhost:8181/onos/v1/paths/of:0000000000000001/of:000000000000000a -u onos:rocks
-                # op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/device:s{s}/device:s{o} -u onos:rocks)" >> {hopsScriptOutputFileName}'
-                op = f'echo "(s{s}, s{o}): $(curl -X GET http://localhost:8181/onos/v1/paths/{generate_openflow_id(16, s+1)}/{generate_openflow_id(16, o+1)} -u onos:rocks)" >> {hopsScriptOutputFileName}'
-                f.write(op)
-                f.write('\n')
-                # f.write("echo >> paths.txt\n")
 
 
 # Example usage:
@@ -247,7 +233,12 @@ def call_mininet_generator(num_nodes: int, G: nx.classes.graph.Graph, mininetCon
     outputFileName = os.path.join(mininetConfigFilePath, mininetConfigFileName)
 
     # note that the logic to limit queue size is in the definition of  generateMininetTopologyFile
-    generateMininetTopologyFile(outputFileName) 
+    sortedLinks = generateMininetTopologyFile(outputFileName) 
+
+    with open(os.path.join(mininetConfigFilePath, sortedLinksFileName), 'w+') as f:
+        for l in sortedLinks:
+            f.write(str(l))
+            f.write('\n')
 
 def main():
     # Set up argument parser
@@ -264,7 +255,8 @@ def main():
     generateTopologyFile(args.num_nodes, args.topo_file_path)
     generate_ONOS_config(args.num_nodes, args.onos_config_file_path)
 
-    generate_get_hops_script(args.num_nodes, args.hops_script_file_path)
+    # with openflow and OVS switches, we just get all the flows
+    # generate_get_hops_script(args.num_nodes, args.hops_script_file_path)
     
     print(f"Generated topology with {args.num_nodes} hosts and {args.num_nodes} switches using {args.connectivity_type} connectivity")
     finalTopoFileName = os.path.join(args.topo_file_path, topoFileName)
