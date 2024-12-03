@@ -241,6 +241,7 @@ def call_mininet_generator(num_nodes: int, G: nx.classes.graph.Graph, mininetCon
             f.write('\n')
 
 def main():
+    print("main from main called")
     # Set up argument parser
     args = getCommandLineArgs()
 

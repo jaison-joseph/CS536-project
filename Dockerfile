@@ -6,7 +6,6 @@ RUN echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.
     echo "Acquire::Check-Valid-Until \"false\";" > /etc/apt/apt.conf.d/100debconf && \
     apt-get -o Acquire::AllowInsecureRepositories=true update && \
     apt-get --allow-unauthenticated install -y \
-    iperf3 \
     python3 \
     python3-pip \
     d-itg \

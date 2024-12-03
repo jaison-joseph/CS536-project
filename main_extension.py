@@ -163,7 +163,7 @@ def getDitgCommands():
     res.append("# start ditg servers")
     for t in targets:
         res.append(f"print('starting ditg server @ {t}')")
-        res.append(f"h{t}.cmd('nohup ITGRecv &')")
+        res.append(f"h{t}.cmd('nohup ITGRecv 2>&1 </dev/null &')")
     res.append("")
 
     res.append("# wait for servers to start")
@@ -178,7 +178,7 @@ def getDitgCommands():
         # res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
         res.append(f"print('launching {c} -> {s} ITGSend')")
         # res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
-        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 </dev/null &')")
         lk[s] -= 1
     res.append("")
 
@@ -222,7 +222,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     res.append("# start ditg servers")
     for t in targets:
         # res.append(f"print('starting ditg server @ {t}')")
-        res.append(f"h{t}.cmd('nohup ITGRecv &')")
+        res.append(f"h{t}.cmd('nohup ITGRecv 2>&1 </dev/null &')")
     res.append("")
 
     res.append("# wait for servers to start")
@@ -510,6 +510,7 @@ def autoGenerateTest(
     testDuration: int, trafficIntensity: int, networkConfigFileName: str, 
     outputTestFilePath: str, rawFilePath: str, decodedFilePath: str, outputStatsFrequency: int
 ):
+    print("autoGenerateTest from main_extension called")
     numHosts, numSwitches, edges = read_topo_json(networkConfigFileName)
 
     setNumberOfHosts(numHosts)

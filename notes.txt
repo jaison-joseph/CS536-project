@@ -193,5 +193,5 @@ TODO Dec 1
         time.sleep(20)
 
 python3 master.py 10 nsfnet 2 90 1000 9 11
-python3 master.py 3 nsfnet 1 30 1000 12
+python3 master.py 6 nsfnet 1 30 1000 12 12
 python3 get_graph_attr.py simulations/nsfnet_7_14_14/lambda_14/topo.json simulations/nsfnet_7_14_14/lambda_14/sorted_links.txt simulations/nsfnet_7_14_14/lambda_14
