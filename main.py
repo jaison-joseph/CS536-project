@@ -4,6 +4,7 @@ import os
 import json
 import argparse
 from random import choice
+from itertools import combinations
 
 from main_extension import *
 
@@ -49,6 +50,50 @@ def getCommandLineArgs():
 
     return args
 
+def newNetworkGen(G: nx.classes.graph.Graph, hosts: list, switches: list):
+    # divide into sub-networks of hosts
+    buckets = [switches[i:i+4] for i in range(0, len(switches), 3)]
+    # for each bucket, ensure it is connected
+    for b in buckets:
+        countdown = max(len(b) - 1, 1)
+        visited = set()
+        for x, y in combinations(b, 2):
+            if x not in visited or y not in visited:
+                visited.add(x)
+                visited.add(y)
+                G.add_edge(x, y)
+                countdown -= 1
+                if countdown <= 0:
+                    break
+    # ensure the buckets are connected
+    countdown = max(len(buckets) - 3, 1) # tweak me (- 2)
+    lk = {i: b for i, b in enumerate(buckets)}
+    countdown = max(len(b) - 1, 1)
+    visited = set()
+    for x, y in combinations(list(lk.keys()), 2):
+        if x not in visited or y not in visited:
+            visited.add(x)
+            visited.add(y)
+            G.add_edge(random.choice(lk[x]), random.choice(lk[y]))
+
+    for _ in range(2):
+        #  get switches that have <= 1 switch neighbor
+        singles = [node for node in switches if len(list(G.neighbors(node))) <= 1]
+
+        # pair up singles
+        for i in range(len(singles)//2):
+            s1 = random.choice(singles)
+            singles.remove(s1)
+            s2 = random.choice(singles)
+            singles.remove(s2)
+            G.add_edge(s1, s2)
+        
+        # if there's an odd one out 
+        for s in singles:
+            connectionOptions = set(switches) - set(list(G.neighbors(s))) - set([s])
+            print(f"connection options for {s} are: {connectionOptions}")
+            G.add_edge(s, random.choice(list(connectionOptions)))
+
 def create_backbone_network(num_nodes, connectivity_type='nsfnet'):
     """
     Create a backbone network topology.
@@ -76,18 +121,21 @@ def create_backbone_network(num_nodes, connectivity_type='nsfnet'):
     
     # Create backbone connectivity between switches based on type
     if connectivity_type == 'nsfnet':
-        # Sparse connectivity (~2-3 connections per switch)
-        # First create a ring topology to ensure connectivity
-        for i in range(num_nodes):
-            G.add_edge(f's{i}', f's{(i+1)%num_nodes}')
-        # Add some random additional links
-        extra_links = num_nodes // 2
-        while extra_links > 1:
-            s1 = random.choice(switches)
-            s2 = random.choice(switches)
-            if s1 != s2 and not G.has_edge(s1, s2):
-                G.add_edge(s1, s2)
-                extra_links -= 1
+        if len(hosts) > 10:
+            newNetworkGen(G, hosts, switches)
+        else:
+            # Sparse connectivity (~2-3 connections per switch)
+            # First create a ring topology to ensure connectivity
+            for i in range(num_nodes):
+                G.add_edge(f's{i}', f's{(i+1)%num_nodes}')
+            # Add some random additional links
+            extra_links = num_nodes // 2
+            while extra_links > 1:
+                s1 = random.choice(switches)
+                s2 = random.choice(switches)
+                if s1 != s2 and not G.has_edge(s1, s2):
+                    G.add_edge(s1, s2)
+                    extra_links -= 1
                 
     elif connectivity_type == 'geant2':
         # Medium connectivity (~3-4 connections per switch)
@@ -255,6 +303,16 @@ def call_mininet_generator(num_nodes: int, G: nx.classes.graph.Graph, mininetCon
         for l in sortedLinks:
             f.write(str(l))
             f.write('\n')
+
+def draw(G_nsf: nx.classes.graph.Graph):
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(12,8))
+    pos = nx.spring_layout(G_nsf)
+    nx.draw(G_nsf, pos, with_labels=True, 
+            node_color=['lightblue' if node.startswith('s') else 'lightgreen' for node in G_nsf.nodes()],
+            node_size=500)
+    plt.title("NSF-like Network Topology")
+    plt.show()
 
 def main():
     print("main from main called")
