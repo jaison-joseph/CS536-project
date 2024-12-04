@@ -5,7 +5,7 @@ import time
 import os
 import argparse
 
-from main import mininetConfigFileName, topoFileName, onosConfigFileName, hopsScriptFileName, sortedLinksFileName
+from main import mininetConfigFileName, topoFileName, onosConfigFileName, hopsScriptFileName, sortedLinksFileName, hopsScriptOutputFileName
 from main_extension import testFileName
 from parse_flow_files import portMatrixFileName
 from get_graph_attr import graphAttrFileName
@@ -111,6 +111,8 @@ def runner(args):
                 'topo_file_path': rootSimulationDir,
                 'onos_config_file_path': rootSimulationDir,
                 'mininet_config_file_path': rootSimulationDir,
+                'hops_script_file_path': simulationDir,
+                'hops_script_output_file_path': simulationDir,
                 'flows_script': flowsScript,
                 'flows_script_output_file_path': simulationDir, # input to generate port matrix
                 'port_matrix_file_path': simulationDir, # for each lambda value
@@ -132,13 +134,18 @@ def runner(args):
                 os.path.join(calculated_args["flows_script_output_file_path"], flowsScriptOutputFileName)
             calculated_args["sorted_links_file"] = \
                 os.path.join(calculated_args["mininet_config_file_path"], sortedLinksFileName)
+            calculated_args["hops_script"] = \
+                os.path.join(calculated_args["hops_script_file_path"], hopsScriptFileName)
+            calculated_args["hops_script_output_file"] = \
+                os.path.join(calculated_args["hops_script_output_file_path"], hopsScriptOutputFileName)
 
             if runNum == 1:
                 if trafficIntensity == args.traffic_intensity_low:
                     subprocess.run([
                         'python3', 'main.py',
                         f'{args.num_nodes}', f'{args.connectivity_type}', f'{calculated_args["topo_file_path"]}',
-                        f'{calculated_args["onos_config_file_path"]}', f'{calculated_args["mininet_config_file_path"]}'
+                        f'{calculated_args["onos_config_file_path"]}', f'{calculated_args["mininet_config_file_path"]}',
+                        f'{calculated_args["hops_script_file_path"]}'
                     ])
                     time.sleep(1)
                     print(f"generate the graph attr file: {graphAttrFileName}")
@@ -261,41 +268,41 @@ def run_setup_openflow_switches(args, calculated_args, run_number):
     # get flows on the last run
     if run_number == args.num_runs:
 
-        # Window 4: Handle get_flows script
-        print("Window 4: Handle get_flows script")
+        # Window 4 Handle get_hops script
+        print("Window 4: Handle get_hops script")
         
         # Make the script executable
-        print("Make the get_flows.sh executable")
+        print("Make the get_hops.sh executable")
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
-                        'chmod', '+x', calculated_args["flows_script"], 'C-m'])
+                        'chmod', '+x', calculated_args["hops_script"], 'C-m'])
         
-        # Copy and execute get_flows script
-        print("Copy and execute get_flows script")
+        # Copy and execute get_hops script
+        print("Copy and execute get_hops script")
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
-                    f'docker cp {calculated_args["flows_script"]} onos:/root/onos/get_flows.sh', 'C-m'])
-        time.sleep(0.1)
+                    f'docker cp {calculated_args["hops_script"]} onos:/root/onos/get_hops.sh', 'C-m'])
+        time.sleep(1)
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
-                    'docker exec onos chmod +x /root/onos/get_flows.sh', 'C-m'])
-        time.sleep(0.1)
+                    'docker exec onos chmod +x /root/onos/get_hops.sh', 'C-m'])
+        time.sleep(1)
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
-                    'docker exec onos /root/onos/get_flows.sh', 'C-m'])
+                    'docker exec onos /root/onos/get_hops.sh', 'C-m'])
         time.sleep(args.num_nodes)
         
         # Copy results back
         print("Copy results back")
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
-                f'docker cp onos:/root/onos/paths.txt {calculated_args["flows_script_output_file"]}', 'C-m'])
+                f'docker cp onos:/root/onos/paths.txt {calculated_args["hops_script_output_file"]}', 'C-m'])
         time.sleep(2)
 
-        # get the port matrix from the output of the get_flows script
-        print("get the port matrix from the output of the get_flows script")
+        # get the port matrix from the output of the get_hops script
+        print("get the port matrix from the output of the get_hops script")
 
-        get_port_matrix_args = f'{args.num_nodes} ' + \
-                f'{calculated_args["flows_script_output_file"]} {calculated_args["port_matrix_file_path"]}'
+        get_port_matrix_args = f'{calculated_args["topo_file"]} ' + \
+                f'{calculated_args["hops_script_output_file"]} {calculated_args["port_matrix_file_path"]}'
         
         subprocess.run([
             'tmux', 'send-keys', '-t', 'onos_session:0',
-            f'python3 parse_flow_files.py {get_port_matrix_args}', 'C-m'])
+            f'python3 get_port_matrix.py {get_port_matrix_args}', 'C-m'])
     
     # test_duration * 2 : for ITGSend
     # 10                : for killing of ITGRecv processes
