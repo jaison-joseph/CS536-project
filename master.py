@@ -111,7 +111,7 @@ def runner(args):
                 'topo_file_path': rootSimulationDir,
                 'onos_config_file_path': rootSimulationDir,
                 'mininet_config_file_path': rootSimulationDir,
-                'hops_script_file_path': simulationDir,
+                'hops_script_file_path': rootSimulationDir,
                 'hops_script_output_file_path': simulationDir,
                 'flows_script': flowsScript,
                 'flows_script_output_file_path': simulationDir, # input to generate port matrix
@@ -280,10 +280,13 @@ def run_setup_openflow_switches(args, calculated_args, run_number):
         print("Copy and execute get_hops script")
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
                     f'docker cp {calculated_args["hops_script"]} onos:/root/onos/get_hops.sh', 'C-m'])
-        time.sleep(1)
+        time.sleep(0.1)
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
                     'docker exec onos chmod +x /root/onos/get_hops.sh', 'C-m'])
-        time.sleep(1)
+        time.sleep(0.1)
+        # clear paths.txt
+        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 'docker exec onos truncate -s 0 /root/onos/paths.txt', 'C-m'])
+        time.sleep(0.1)
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:3', 
                     'docker exec onos /root/onos/get_hops.sh', 'C-m'])
         time.sleep(args.num_nodes)
