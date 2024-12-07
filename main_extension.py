@@ -237,14 +237,14 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
         # res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
         rawFileName = f"{outputFilePrefix}_{c}_{s}"
         fullRawFileName = os.path.join(rawFilePath, rawFileName)
-        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x {fullRawFileName} 2>&1 &')")
+        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x {fullRawFileName} 2>&1 </dev/null &')")
         lk[s] -= 1
     res.append("")
 
     assert all(x == 0 for x in lk.values()), list(lk.values())
     
     res.append("# wait for ITGSend to finish")
-    res.append(f"time.sleep({int(testDuration * 3)})")
+    res.append(f"time.sleep({int(testDuration * 1.5)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -253,7 +253,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     res.append("")
 
     res.append("# wait for killing of ITGRecv processes")
-    res.append("time.sleep(10)")
+    res.append("time.sleep(5)")
     res.append("")
 
     res.append("# decode d-itg logs to 10-second interval stats")

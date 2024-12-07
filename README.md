@@ -4,10 +4,20 @@
 	- networkx install on python3
 
 - Just run:
-`python3 master.py <number of nodes> [nsfnet/geant2/germany50] <number of simulation runs> <time per simulation in SECONDS> <frequency of statistics in MILLISECONDS> <traffic intensity>`
+`python3 master.py <number of nodes> [nsfnet/geant2/germany50] <number of runs per traffic intensity value> <time per run in SECONDS> <frequency of statistics in MILLISECONDS> <min traffic intensity> <max traffic intensity>`
 	- the second argment: nsfnet/geant2/germany50 is the type of network, each one more densely connected than the other (nsfnet least, germany50 most
 		- I have only used nsfnet so far, the others I'm not sure of it.
 	- the master.py orchestrates all the terminals to run the simulation
+	- if:
+		- number of runs per traffic intensity value is x
+		- min traffic intensity is i
+		- max traffic intensity is j
+	- then:
+		- the script runs a simulation x times for every value in the range [i, j]
+		- each run has the same test, same target bandwidths between runs
+		- between different traffic intensities, the target bandwidths of connections vary
+		- for every run, the topology and the link speeds of the links stay the same
+
 
 - Here is the overview of what master.py does:
 	- starts by generating the files for each simulation

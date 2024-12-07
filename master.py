@@ -171,6 +171,8 @@ def runner(args):
                 subprocess.run([
                     'sed', '-i', f's/run_{runNum-1}/run_{runNum}/g', f"{calculated_args['test_file']}"
                 ])
+				# maybe for 
+				time.sleep(1)
             
             run_setup_openflow_switches(args, calculated_args, runNum)
             # run_setup(args, calculated_args, runNum, 7)
@@ -225,9 +227,9 @@ def setup_ONOS_and_mininet(args, calculated_args, run_number, max_attempts = 5):
         print("Running first pingall...")
         subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
         time.sleep(args.num_nodes * 2)
-        print("Running second pingall...")
-        subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
-        time.sleep(args.num_nodes * 2)
+        # print("Running second pingall...")
+        # subprocess.run(['tmux', 'send-keys', '-t', 'onos_session:2', 'pingall', 'C-m'])
+        # time.sleep(args.num_nodes * 2)
 
         # Check if mininet CLI is ready
         if not check_mininet_cli_ready():
@@ -263,10 +265,12 @@ def run_setup_openflow_switches(args, calculated_args, run_number):
     # then, we execute the script to get the flows
     # ONOS is very quick to remove flows once they are inactive; so we want to query 
     # ONOS just before the ITGSend commands are done executing
-    time.sleep(itgSendDuration)
+    # time.sleep(itgSendDuration)
 
     # get flows on the last run
     if run_number == args.num_runs:
+
+        time.sleep(args.test_duration * 0.75)
 
         # Window 4 Handle get_hops script
         print("Window 4: Handle get_hops script")
@@ -307,13 +311,11 @@ def run_setup_openflow_switches(args, calculated_args, run_number):
             'tmux', 'send-keys', '-t', 'onos_session:0',
             f'python3 get_port_matrix.py {get_port_matrix_args}', 'C-m'])
     
-    # test_duration * 2 : for ITGSend
-    # 10                : for killing of ITGRecv processes
-    # 5                 : starting of ITGRecv processes
-    time.sleep(args.test_duration * 2 + 10 + 5)
+    print("waiting for test script to finish")
     while (not check_mininet_cli_ready()):
-        print("waiting for test script to finish")
         time.sleep(1)
+        print('.', end='', flush=True)
+    print('')
 
 if __name__ == "__main__":
     args = getCommandLineArgs()
