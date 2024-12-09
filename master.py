@@ -13,7 +13,7 @@ from get_graph_attr import graphAttrFileName
 flowsScript = 'get_flows.sh'
 flowsScriptOutputFileName = 'flows.txt'
 
-portMatrixTarget = 'flows' # must be 'flows' or 'paths'
+portMatrixTarget = 'paths' # must be 'flows' or 'paths'
 
 def getCommandLineArgs():
     parser = argparse.ArgumentParser(description='Generate network topology and ONOS configuration')
