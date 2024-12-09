@@ -510,7 +510,6 @@ def autoGenerateTest(
     testDuration: int, trafficIntensity: int, networkConfigFileName: str, 
     outputTestFilePath: str, rawFilePath: str, decodedFilePath: str, outputStatsFrequency: int
 ):
-    print("autoGenerateTest from main_extension called")
     numHosts, numSwitches, edges = read_topo_json(networkConfigFileName)
 
     setNumberOfHosts(numHosts)

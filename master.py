@@ -142,22 +142,22 @@ def runner(args):
                 os.path.join(calculated_args["hops_script_output_file_path"], hopsScriptOutputFileName)
 
             if runNum == 1:
-                # if trafficIntensity == args.traffic_intensity_low:
-                    # subprocess.run([
-                    #     'python3', 'main.py',
-                    #     f'{args.num_nodes}', f'{args.connectivity_type}', f'{calculated_args["topo_file_path"]}',
-                    #     f'{calculated_args["onos_config_file_path"]}', f'{calculated_args["mininet_config_file_path"]}',
-                    #     f'{calculated_args["hops_script_file_path"]}'
-                    # ])
-                    # time.sleep(1)
-                    # print(f"generate the graph attr file: {graphAttrFileName}")
+                if trafficIntensity == args.traffic_intensity_low:
+                    subprocess.run([
+                        'python3', 'main.py',
+                        f'{args.num_nodes}', f'{args.connectivity_type}', f'{calculated_args["topo_file_path"]}',
+                        f'{calculated_args["onos_config_file_path"]}', f'{calculated_args["mininet_config_file_path"]}',
+                        f'{calculated_args["hops_script_file_path"]}'
+                    ])
+                    time.sleep(1)
+                    print(f"generate the graph attr file: {graphAttrFileName}")
 
-                    # subprocess.run([
-                    #     'python3', 'get_graph_attr.py', 
-                    #     calculated_args["topo_file"], 
-                    #     calculated_args["sorted_links_file"],
-                    #     calculated_args["graph_attr_path"]
-                    # ])
+                    subprocess.run([
+                        'python3', 'get_graph_attr.py', 
+                        calculated_args["topo_file"], 
+                        calculated_args["sorted_links_file"],
+                        calculated_args["graph_attr_path"]
+                    ])
                 
                 subprocess.run([
                     'python3', 'main_extension.py', 
