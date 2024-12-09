@@ -180,9 +180,6 @@ def runner(args):
             # run_setup(args, calculated_args, runNum, 7)
             # run_setup_only_print(args, calculated_args)
 
-def ppprint(x):
-    print(" ".join(x))
-
 def setup_ONOS_and_mininet(args, calculated_args, run_number, max_attempts = 5):
     # Create new tmux session
     print("Create new tmux session")
