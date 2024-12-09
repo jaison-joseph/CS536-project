@@ -44,6 +44,7 @@ def main(topoFile: str, hopsFileName: str, portMatrixFilePath: str):
             with open(outputFileName, "w+") as fOut:
                 for row in matrix:
                     fOut.write(str(row)[1:-1].replace(" ", ''))
+                    fOut.write(",")
                     fOut.write('\n')
     # except Exception as e:
     #     print(f"Error generating port matrix: {e}")

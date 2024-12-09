@@ -1,20 +1,27 @@
 #!/bin/bash
 
-docker build -t mn-stratum-iperf3 .
+# uses the Dockerfile
+docker build -t opennetworking/mn-stratum:20.12 .
 
 MN_STRATUM_DOCKER_NAME=${MN_STRATUM_DOCKER_NAME:-mn-stratum}
-# MN_STRATUM_IMG=${MN_STRATUM_IMG:-opennetworking/mn-stratum:20.12}
-MN_STRATUM_IMG=mn-stratum-iperf3  # Instead of opennetworking/mn-stratum:20.12
+MN_STRATUM_IMG=opennetworking/mn-stratum:20.12  
 MN_STRATUM_MOUNT_DIR=${MN_STRATUM_MOUNT_DIR:-$PWD}
 
-# Run the container 
+# Remove the extra scripts/mn-custom line and combine everything into the docker run
 docker run --privileged --rm -it \
     --name $MN_STRATUM_DOCKER_NAME \
     --network host \
-    --cpus=1.5 \
-    --memory=5g \
-    --memory-swap=6g \
+    --cpus=1.0 \
+    --memory=2g \
+    --memory-swap=3g \
     --shm-size=1g \
+    --ulimit nofile=65536:65536 \
     -v /tmp/mn-stratum:/tmp \
     -v "$MN_STRATUM_MOUNT_DIR":/workdir -w /workdir \
-    $MN_STRATUM_IMG --custom $MN_STRATUM_TOPO_FILE --topo customtopo --link tc
+    $MN_STRATUM_IMG \
+    --custom "$MN_STRATUM_TOPO_FILE" \
+    --topo customtopo \
+    --link tc \
+    --controller remote,ip=127.0.0.1 \
+    --switch ovsk \
+    --mac

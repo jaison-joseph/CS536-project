@@ -163,12 +163,12 @@ def getDitgCommands():
     res.append("# start ditg servers")
     for t in targets:
         res.append(f"print('starting ditg server @ {t}')")
-        res.append(f"h{t}.cmd('nohup ITGRecv &')")
+        res.append(f"h{t}.cmd('nohup ITGRecv 2>&1 </dev/null &')")
     res.append("")
 
     res.append("# wait for servers to start")
     res.append("print('wait for servers to start')")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(5)")
     res.append("")
 
     res.append("# run iperf clients")
@@ -178,7 +178,7 @@ def getDitgCommands():
         # res.append(f"h{c} iperf3 -c h{s} -u -l 1000 -t 15 -i 1")
         res.append(f"print('launching {c} -> {s} ITGSend')")
         # res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
-        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
+        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 </dev/null &')")
         lk[s] -= 1
     res.append("")
 
@@ -186,7 +186,7 @@ def getDitgCommands():
     
     res.append("# wait for ITGSend to finish")
     res.append("print('wait for ITGSend to finish')")
-    res.append(f"time.sleep({int(testDuration * 1.3)})")
+    res.append(f"time.sleep({int(testDuration * 2)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -197,7 +197,7 @@ def getDitgCommands():
 
     res.append("# wait for killing of ITGRecv processes")
     res.append("print('wait for killing of ITGRecv processes')")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(10)")
     res.append("")
 
     res.append("# decode d-itg logs to 10-second interval stats")
@@ -207,6 +207,9 @@ def getDitgCommands():
             f"h{c}.cmd('nohup ITGDec logs/{outputFilePrefix}_{c}_{s}.txt -c 1000 decoded/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')"
         )
     res.append("")
+
+    #wait for itgdec to finish
+    res.append(f"time.sleep({numHosts * 2})")
 
     return res
 
@@ -219,11 +222,11 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     res.append("# start ditg servers")
     for t in targets:
         # res.append(f"print('starting ditg server @ {t}')")
-        res.append(f"h{t}.cmd('nohup ITGRecv &')")
+        res.append(f"h{t}.cmd('nohup ITGRecv 2>&1 </dev/null &')")
     res.append("")
 
     res.append("# wait for servers to start")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(5)")
     res.append("")
 
     res.append("# run iperf clients")
@@ -234,14 +237,14 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
         # res.append(f"h{c}.cmd('nohup iperf3 -c 10.0.0.{s} -u -l 10000 -t 15 -p {5100 + lk[s]} -i 1 > logs/{outputFilePrefix}_{c}_{s}.txt 2>&1 &')")
         rawFileName = f"{outputFilePrefix}_{c}_{s}"
         fullRawFileName = os.path.join(rawFilePath, rawFileName)
-        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x {fullRawFileName} 2>&1 &')")
+        res.append(f"h{c}.cmd('nohup ITGSend -a 10.0.0.{s+1} -T UDP -Fs cfg/ditg_packet_sizes.txt -E {bw:.5f} -t {testDuration * 1000} -x {fullRawFileName} 2>&1 </dev/null &')")
         lk[s] -= 1
     res.append("")
 
     assert all(x == 0 for x in lk.values()), list(lk.values())
     
     res.append("# wait for ITGSend to finish")
-    res.append(f"time.sleep({int(testDuration * 1.3)})")
+    res.append(f"time.sleep({int(testDuration * 1.5)})")
     res.append("")
 
     res.append("# Kill ITGRecv servers")
@@ -250,7 +253,7 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
     res.append("")
 
     res.append("# wait for killing of ITGRecv processes")
-    res.append("time.sleep(2)")
+    res.append("time.sleep(5)")
     res.append("")
 
     res.append("# decode d-itg logs to 10-second interval stats")
@@ -266,6 +269,10 @@ def getDitgCommandsNoPrintStmts(rawFilePath: str, decodedFilePath: str, outputSt
             f"h{c}.cmd('ITGDec {fullRawFileName} -c {outputStatsFrequency} {fullDecodedFileName}')"
         )
     res.append("")
+
+    #wait for itgdec to finish
+    # res.append("# wait for itgdec to finish")
+    # res.append(f"time.sleep({numHosts * 2})")
 
     return res
 
@@ -380,7 +387,7 @@ def setTestDuration(x: int):
     testDuration = x
 
 def setTrafficIntensity(x: int):
-    assert 11 <= x <= 16
+    # assert 11 <= x <= 16
     global TrafficIntensity
     TrafficIntensity = x
 
@@ -425,13 +432,19 @@ def addLink(t1: str, x1: int, t2: str, x2: int, bw: int = 0):
     pair = (p1, p2) if bw == 0 else (p1, p2, bw)
     links.add(pair)
 
+def generate_openflow_id(width, number=1):
+    # Convert to hex and ensure total width including leading zeros
+    hex_format = f"{{:0{width}x}}"
+    hex_num = hex_format.format(number)
+    return f"of:{hex_num}"
+
 def generateMininetTopologyFile(outputFileName: str):
     assert numHosts > 0, "please make a call to setNumberOfHosts first"
     assert numSwitches > 0, "please make a call to setNumberOfSwitches first"
     lines = open('custom-topo.py', 'r').readlines()
 
     new_content = [
-        f"s{i} = self.addSwitch('s{i}')" for i in range(numSwitches)
+        f"s{i} = self.addSwitch('s{i}', dpid='{generate_openflow_id(16, i+1)[3:]}', cls=OVSSwitch)" for i in range(numSwitches)
     ] + \
     [''] + \
     [
@@ -446,7 +459,17 @@ def generateMininetTopologyFile(outputFileName: str):
     # ]
 
     addLinkLines = []
-    for p in links:
+    sortedLinks = list(links)
+    # we want to assign links from hosts to their switch first
+    # p[0][0] and p[1][0] are one of ['h', 's']
+    # considering all combinations, we have 4 values; and when sorted, we have:
+    # ['hh', 'hs', 'sh', 'ss']
+    # in this order, note that 'hh' never occurs because we don't connect 2 hosts
+    # 'hs' / 'sh': we want this first
+    # 'ss': what we want after all the 'hs', 'sh'
+
+    sortedLinks.sort(key = lambda x: f'{x[0][0]}{x[1][0]}')
+    for p in sortedLinks:
         if len(p) == 3:
             if p[0][0] == 'h' or  p[1][0] == 'h':
                 addLinkLines.append(
@@ -480,7 +503,8 @@ def generateMininetTopologyFile(outputFileName: str):
         lines, new_content, 
         start_marker, end_marker, 
         outputFileName
-    )    
+    )
+    return sortedLinks    
 
 def autoGenerateTest(
     testDuration: int, trafficIntensity: int, networkConfigFileName: str, 
